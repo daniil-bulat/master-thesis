@@ -20,10 +20,12 @@ import numpy as np
 ##############################################################################
 
 # Read with parquet
+
+
+
 taste_diff_result_df = pd.read_parquet("data/taste_diff_result_df_TEST.parquet", engine="fastparquet")
 
-full_sample_reviews_df = pd.read_parquet("data/sample_sentiment_analysis.parquet", engine="fastparquet")
-
+full_sample_reviews_df = pd.read_parquet("data/sample_sentiment_analysis_taste_diff.parquet", engine="fastparquet")
 
 
 ##The Variance Threshold was set to 1 for identifying high variance / taste reviews
@@ -66,8 +68,6 @@ plt.show()
 ##############################################################################
 # 2 ### IMPACT
 ##############################################################################
-
-
 
 
 

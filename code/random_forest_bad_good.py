@@ -35,6 +35,16 @@ import pyarrow
 from sklearn import preprocessing
 from sklearn import utils
 from sklearn.svm import SVC
+from sklearn.feature_selection import SelectKBest,f_regression
+from sklearn.pipeline import Pipeline
+from sklearn.linear_model import LinearRegression
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import mean_squared_error
+
+
 
 
 
@@ -42,39 +52,111 @@ from sklearn.svm import SVC
 # Data Prearation
 ##############################################################################
 
-# Read in DF with parquet
-full_sample_reviews_df = pd.read_parquet("sample_sentiment_analysis.parquet", engine="fastparquet")
+os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis')
+
+# Read csv with parquet
+nlp_review_df = pd.read_parquet("data/full_nlp_review_df.parquet", engine="fastparquet")
+full_hotel_review_df = pd.read_parquet("data/full_hotel_review_df.parquet", engine="fastparquet")
 
 
-# select only relevant columns
-sample_reviews_df = full_sample_reviews_df[['bad_review_dummy',
-                                            'review_rating',
-                                            'review',
-                                            'review_clean']]
+
+
 
 
 ##############################################################################
-# Random Forest
+# Select Sample
+##############################################################################
+
+# select only relevant columns
+sample_reviews_df = full_hotel_review_df[['bad_review_dummy']]
+
+bad_reviews = sample_reviews_df[sample_reviews_df["bad_review_dummy"]==1].iloc[0:5000,:]
+good_reviews = sample_reviews_df[sample_reviews_df["bad_review_dummy"]==0].iloc[0:5000,:]
+
+sample_frames = [bad_reviews, good_reviews]
+sample_reviews_df = pd.concat(sample_frames)
+
+# join with nlp df
+sample_reviews_df = sample_reviews_df.join(nlp_review_df)
+
+
+
+
+
+##############################################################################
+# Train / Test Sets
 ##############################################################################
 
 
 label = "bad_review_dummy"
-ignore_cols = [label, 'review', 'review_clean', 'review_rating']
+ignore_cols = [label]
 features = [c for c in sample_reviews_df.columns if c not in ignore_cols]
 
 # split the data into train and test
 X_train, X_test, y_train, y_test = train_test_split(sample_reviews_df[features], sample_reviews_df[label], test_size = 0.30, random_state = 77)
 
 
+
+
+
+
+##############################################################################
+# Feature Elimination
+##############################################################################
+
+data = sample_reviews_df[features]
+target = sample_reviews_df[label]
+
+
+pipeline = Pipeline(
+    [('selector',SelectKBest(f_regression)), #score variables according to F-score
+     ('model',RandomForestRegressor(random_state = 77))])
+
+
+
+
+search = GridSearchCV(
+    estimator = pipeline,
+    param_grid = {
+        'selector__k':[1000,2500,3205] , 
+        'model__n_estimators':np.arange(90,250,20)},
+    n_jobs=-1,
+    scoring="neg_mean_squared_error",
+    cv=4,
+    verbose=3)
+
+
+search.fit(data,target)
+search.best_params_
+search.best_score_
+
+#[CV 4/4] END model__n_estimators=90, selector__k=1000;, score=-0.150 total time= 3.1min
+#[CV 4/4] END model__n_estimators=90, selector__k=3205;, score=-0.150 total
+
+# search.best_params_ = 'model__n_estimators': 230, 'selector__k': 2500}
+
+final_pipeline = search.best_estimator_
+final_classifier = final_pipeline.named_steps['selector']
+
+select_indices = final_pipeline.named_steps['selector'].transform(
+    np.arange(len(data.columns)).reshape(1, -1))
+
+
+feature_names = X_train.columns[select_indices]
+
+feature_names = feature_names.tolist()
+dds = pd.DataFrame(feature_names)
+dds.to_csv("feature_list.csv")
+
+
+
+##############################################################################
+# Random Forest
+##############################################################################
+
 # train a random forest classifier
 rf = RandomForestClassifier(n_estimators = 90, random_state = 77)
 rf.fit(X_train, y_train)
-
-# show feature importance
-feature_importances_df = pd.DataFrame({"feature": features, "importance": rf.feature_importances_}).sort_values("importance", ascending = False)
-feature_importances_df.head(20)
-
-top_feat = feature_importances_df['feature'][:100].tolist()
 
 # predictive power
 y_preds = rf.predict(X_test)
@@ -84,10 +166,9 @@ print(rf.score(X_test, y_test))
 # Confusion Matrix
 print(metrics.confusion_matrix(y_test, y_preds))
 
-result_df = pd.DataFrame(y_test)
-result_df['y_pred'] = y_preds
-
-
+# show feature importance
+feature_importances_df = pd.DataFrame({"feature": features, "importance": rf.feature_importances_}).sort_values("importance", ascending = False)
+feature_importances_df.head(20)
 
 
 
@@ -162,7 +243,7 @@ plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/f
 ##############################################################################
 
 
-# Tuning the Random forest 
+## Tuning the Random forest 
 
 # Number of trees in random forest
 n_estimators = np.linspace(10, 300, int((300-10)/20) + 1, dtype=int)
@@ -193,7 +274,9 @@ random_grid = {'n_estimators': n_estimators,
                'criterion': criterion}
 
 
+
 rf_base = RandomForestClassifier()
+
 rf_random = RandomizedSearchCV(estimator = rf_base,
                                param_distributions = random_grid,
                                n_iter = 30, cv = 5,
@@ -201,9 +284,9 @@ rf_random = RandomizedSearchCV(estimator = rf_base,
                                random_state=77, n_jobs = 4)
 
 rf_random.fit(X_train, y_train)
-print("done")
 
 rf_random.best_params_
+
 
 # Reevaluate Model
 y_preds = rf_random.predict(X_test)
@@ -212,15 +295,6 @@ print(rf_random.score(X_test, y_test))   #0.8956666666666667
 
 # Confusion Matrix
 print(metrics.confusion_matrix(y_test, y_preds))
-
-
-y_preds_rand = rf_random.predict(X_test)
-random_gs_result_df = pd.DataFrame(y_test)
-random_gs_result_df['y_pred'] = y_preds_rand
-
-random_gs_result_df["wrong_prediction"] = random_gs_result_df['bad_review_dummy'] != random_gs_result_df['y_pred']
-
-false_predictions = random_gs_result_df[random_gs_result_df["wrong_prediction"] == True]
 
 
 
@@ -270,68 +344,6 @@ grid_false_predictions = grid_result_df[grid_result_df["wrong_prediction"] == Tr
 
 
 
-
-##############################################################################
-# Feature Elimination
-##############################################################################
-from sklearn.feature_selection import SelectKBest,f_regression
-from sklearn.pipeline import Pipeline
-from sklearn.linear_model import LinearRegression
-from sklearn.neighbors import KNeighborsRegressor
-from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import mean_squared_error
-
-
-data = sample_reviews_df.drop(['bad_review_dummy','review', 'review_clean'],1)
-target = sample_reviews_df['bad_review_dummy']
-
-
-pipeline = Pipeline(
-    [
-     ('selector',SelectKBest(f_regression)), #score variables according to F-score
-     ('model',RandomForestRegressor(random_state = 77))
-    ]
-)
-
-
-
-
-search = GridSearchCV(
-    estimator = pipeline,
-    param_grid = {
-  'selector__k':[1000,2500,3205] , 
-  'model__n_estimators':np.arange(90,250,20)   
- },
-    n_jobs=-1,
-    scoring="neg_mean_squared_error",
-    cv=4,
-    verbose=3
-)
-
-
-search.fit(data,target)
-search.best_params_
-search.best_score_
-
-#[CV 4/4] END model__n_estimators=90, selector__k=1000;, score=-0.150 total time= 3.1min
-#[CV 4/4] END model__n_estimators=90, selector__k=3205;, score=-0.150 total
-
-# search.best_params_ = 'model__n_estimators': 230, 'selector__k': 2500}
-
-final_pipeline = search.best_estimator_
-final_classifier = final_pipeline.named_steps['selector']
-
-select_indices = final_pipeline.named_steps['selector'].transform(
-    np.arange(len(data.columns)).reshape(1, -1))
-
-
-feature_names = X_train.columns[select_indices]
-
-feature_names = feature_names.tolist()
-dds = pd.DataFrame(feature_names)
-dds.to_csv("feature_list.csv")
 
 
 ##############################################################################
