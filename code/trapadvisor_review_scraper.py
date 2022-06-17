@@ -33,7 +33,7 @@ from functions_tripadvisor_scraping import headers_for_bs, hotel_info_function
 ##############################################################################
 
 # Directory
-os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/trip_advisor')
+os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/data')
 
 
 
@@ -151,17 +151,14 @@ df_new_hotel_reviews = pd.DataFrame(list(zip(hotel_id, review_title, review_text
                columns =['hotel_id', 'review_title', 'review_text', 'review_rating', 'hotel_name', 'num_reviews', 'average_rating', 'excellent', 'very_good', 'average', 'poor', 'terrible', 'tripadv_ranking'])
 
 
+df_new_hotel_reviews = df_new_hotel_reviews[df_new_hotel_reviews['average_rating']<5.1]
+df_new_hotel_reviews = df_new_hotel_reviews[df_new_hotel_reviews['review_rating']<5.1]
+df_new_hotel_reviews['poor'] = df_new_hotel_reviews['poor'].apply(pd.to_numeric)
+df_new_hotel_reviews = df_new_hotel_reviews.reset_index(drop=True)
+
 
 # Save DF to csv
-df_new_hotel_reviews.to_csv('FINAL_UK_hotel_reviews.csv',encoding="utf-8")
-
-
-
-
-
-
-
-
+df_new_hotel_reviews.to_csv('UK_hotel_reviews.csv',encoding="utf-8")
 
 
 

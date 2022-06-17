@@ -40,15 +40,8 @@ from sklearn.svm import SVC
 # Data Prearation
 ##############################################################################
 
-hotel_review_df = pd.read_csv('FINAL_UK_hotel_reviews.csv')
-
-hotel_review_df = hotel_review_df[hotel_review_df['average_rating']<5.1]
-hotel_review_df = hotel_review_df[hotel_review_df['review_rating']<5.1]
-hotel_review_df['poor'] = hotel_review_df['poor'].apply(pd.to_numeric)
-hotel_review_df = hotel_review_df.reset_index(drop=True)
-
-
-
+# Full Review Table
+hotel_review_df = pd.read_csv('UK_hotel_reviews.csv')
 
 # Read csv with parquet
 sample_reviews_df = pd.read_parquet("sample_sentiment_analysis_1_TA.parquet", engine="fastparquet")
@@ -118,7 +111,7 @@ plt.ylabel('True Positive Rate')
 plt.title('Receiver operating characteristic example')
 plt.legend(loc="lower right")
 plt.show()
-plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/trip_advisor/figures/good_bad_ROC_curve.png')
+plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/figures/good_bad_ROC_curve.png')
 
 
 
@@ -151,20 +144,20 @@ plt.ylabel('Precision')
 plt.ylim([0.0, 1.05])
 plt.xlim([0.0, 1.0])
 plt.title('2-class Precision-Recall curve: AP={0:0.2f}'.format(average_precision))
-plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/trip_advisor/figures/precision_recall.png')
+plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/figures/precision_recall.png')
+
+
+
 
 
 
 
 ##############################################################################
-#                       Tuning the Random forest                             #
+# Random Grid Search for new RF Clasifier
 ##############################################################################
 
-#features = top_feat
 
-
-
-
+# Tuning the Random forest 
 
 # Number of trees in random forest
 n_estimators = np.linspace(10, 300, int((300-10)/20) + 1, dtype=int)
@@ -194,9 +187,6 @@ random_grid = {'n_estimators': n_estimators,
                'bootstrap': bootstrap,
                'criterion': criterion}
 
-##############################################################################
-# Random Grid Search for new RF Clasifier
-##############################################################################
 
 rf_base = RandomForestClassifier()
 rf_random = RandomizedSearchCV(estimator = rf_base,
@@ -269,6 +259,9 @@ grid_result_df['y_pred'] = y_preds_grid
 grid_result_df["wrong_prediction"] = grid_result_df['bad_review_dummy'] != grid_result_df['y_pred']
 
 grid_false_predictions = grid_result_df[grid_result_df["wrong_prediction"] == True]
+
+
+
 
 
 
@@ -424,27 +417,35 @@ hotel_review_df['var'] = var
 
 # large variance indicates spread
 
-np.min(hotel_review_df['var'])
-np.max(hotel_review_df['var'])
+np.min(hotel_review_df['num_reviews'])
+np.max(hotel_review_df['num_reviews'])
+np.mean(hotel_review_df['num_reviews'])
 
 
 high_variance = hotel_review_df[hotel_review_df['var']>1.0]
+many_revies = hotel_review_df[hotel_review_df['num_reviews']>1900]
 
 
 high_var_hotels = high_variance['hotel_name'].unique()
-
+high_num_revies_hotels = many_revies['hotel_name'].unique()
 
 comp_list = false_positives_good_bad['hotel_name'].apply(lambda x: any([k in x for k in high_var_hotels]))
+comp_list_num = false_positives_good_bad['hotel_name'].apply(lambda x: any([k in x for k in high_num_revies_hotels]))
 
 
 
 false_positives_good_bad['high_variance_match'] = comp_list
+false_positives_good_bad['high_numRev_match'] = comp_list_num
 
 sub = false_positives_good_bad[false_positives_good_bad['high_variance_match']==True]
+sub_numRev = false_positives_good_bad[false_positives_good_bad['high_numRev_match']==True]
 
 
+len(sub['high_variance_match']) / len(high_var_hotels) #28%
+len(sub_numRev['high_numRev_match']) / len(high_num_revies_hotels) #34%
 
 
+# 28% of false clasified false positives are from high variance hotels
 
 
 

@@ -19,12 +19,8 @@ import seaborn as sns
 
 
 # Data
-os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis')
-df_new_hotel_reviews = pd.read_csv('FINAL_UK_hotel_reviews.csv')
-
-df_new_hotel_reviews = df_new_hotel_reviews[df_new_hotel_reviews['average_rating']<5.1]
-df_new_hotel_reviews = df_new_hotel_reviews[df_new_hotel_reviews['review_rating']<5.1]
-df_new_hotel_reviews['poor'] = df_new_hotel_reviews['poor'].apply(pd.to_numeric)
+os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/data')
+df_new_hotel_reviews = pd.read_csv('UK_hotel_reviews.csv')
 
 
 ###############################################################################

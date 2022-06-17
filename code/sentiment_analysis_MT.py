@@ -63,12 +63,7 @@ from functions_nlp import get_wordnet_pos, clean_text, show_wordcloud
 # Data Prearation
 ##############################################################################
 
-hotel_review_df = pd.read_csv('FINAL_UK_hotel_reviews.csv')
-
-hotel_review_df = hotel_review_df[hotel_review_df['average_rating']<5.1]
-hotel_review_df = hotel_review_df[hotel_review_df['review_rating']<5.1]
-hotel_review_df['poor'] = hotel_review_df['poor'].apply(pd.to_numeric)
-hotel_review_df = hotel_review_df.reset_index(drop=True)
+hotel_review_df = pd.read_csv('UK_hotel_reviews.csv')
 
 
 # append the positive and negative text reviews
@@ -78,37 +73,35 @@ hotel_review_df["review"] = hotel_review_df["review_title"] +" "+ hotel_review_d
 hotel_review_df["bad_review_dummy"] = hotel_review_df["review_rating"].apply(lambda x: 1 if x < 3.5 else 0)
 
 
-
-# select only relevant columns
-reviews_df = hotel_review_df[['bad_review_dummy',
-                              'review_rating',
-                              'review']]
-
-
 # clean text data
-reviews_df["review"] = reviews_df["review"].astype(str)
-reviews_df["review_clean"] = reviews_df["review"].apply(lambda x: clean_text(x))
+hotel_review_df["review"] = hotel_review_df["review"].astype(str)
+hotel_review_df["review_clean"] = hotel_review_df["review"].apply(lambda x: clean_text(x))
 
 
 # add number of characters column
-reviews_df["nb_chars"] = reviews_df["review_clean"].apply(lambda x: len(x))
+hotel_review_df["nb_chars"] = hotel_review_df["review_clean"].apply(lambda x: len(x))
 
 # add number of words column
-reviews_df["nb_words"] = reviews_df["review_clean"].apply(lambda x: len(x.split(" ")))
+hotel_review_df["nb_words"] = hotel_review_df["review_clean"].apply(lambda x: len(x.split(" ")))
 
 
 
 # Save to CSV
-reviews_df.to_csv("clean_tripadvisor_review_table.csv", encoding='utf8', index=False)
+hotel_review_df.to_csv("clean_tripadvisor_review_table.csv", encoding='utf8', index=False)
 
 # Read CSV
-reviews_df = pd.read_csv("clean_tripadvisor_review_table.csv")
+hotel_review_df = pd.read_csv("clean_tripadvisor_review_table.csv")
 
 
 ##############################################################################
 # Use a Sample for Feature Selection
 ##############################################################################
 #sample_reviews_df = reviews_df.sample(frac = 0.1, replace = False, random_state=42)
+
+# select only relevant columns
+reviews_df = hotel_review_df[['bad_review_dummy',
+                              'review_rating',
+                              'review']]
 
 bad_reviews = reviews_df[reviews_df["bad_review_dummy"]==1].iloc[0:5000,:]
 good_reviews = reviews_df[reviews_df["bad_review_dummy"]==0].iloc[0:5000,:]
@@ -182,7 +175,7 @@ sample_reviews_df = pd.read_parquet("sample_sentiment_analysis_1_TA.parquet", en
 ##############################################################################
 
 show_wordcloud(sample_reviews_df["review_clean"])
-plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/trip_advisor/figures/review_wordcloud.png')
+plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/figures/review_wordcloud.png')
 
 
 
@@ -219,7 +212,7 @@ for x in [0, 1]:
 plt.title('Density Plot of Review Sentiment')
 plt.xlabel('Sentiment Score')
 plt.ylabel('Frequency')
-plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/trip_advisor/figures/good_bad_density_plot_sentiment.png')
+plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/figures/density_plot_reviews.png')
 
 
 
