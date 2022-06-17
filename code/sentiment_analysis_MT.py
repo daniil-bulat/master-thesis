@@ -63,7 +63,7 @@ from functions_nlp import get_wordnet_pos, clean_text, show_wordcloud
 # Data Prearation
 ##############################################################################
 
-hotel_review_df = pd.read_csv('UK_hotel_reviews.csv')
+hotel_review_df = pd.read_csv('data/UK_hotel_reviews.csv')
 
 
 # append the positive and negative text reviews
@@ -87,24 +87,57 @@ hotel_review_df["nb_words"] = hotel_review_df["review_clean"].apply(lambda x: le
 
 
 # Save to CSV
-hotel_review_df.to_csv("clean_tripadvisor_review_table.csv", encoding='utf8', index=False)
+hotel_review_df.to_csv("data/clean_tripadvisor_review_table.csv", encoding='utf8', index=False)
 
 # Read CSV
-hotel_review_df = pd.read_csv("clean_tripadvisor_review_table.csv")
+hotel_review_df = pd.read_csv("data/clean_tripadvisor_review_table.csv")
+
+# Add Variance of Reviews Column
+mu = []
+var = []
+
+for i in range(0,len(hotel_review_df['review_rating'])):
+    distribution_list = []
+    distribution_list.extend([5] * int(hotel_review_df['excellent'].iloc[i]))
+    distribution_list.extend([4] * int(hotel_review_df['very_good'].iloc[i]))
+    distribution_list.extend([3] * int(hotel_review_df['average'].iloc[i]))
+    distribution_list.extend([2] * int(hotel_review_df['poor'].iloc[i]))
+    distribution_list.extend([1] * int(hotel_review_df['terrible'].iloc[i]))
+    
+    mu.append(np.mean(distribution_list))
+    var.append(np.var(distribution_list))
+
+
+
+hotel_review_df['mu'] = mu
+hotel_review_df['var'] = var
+
+
+
+# Add a dummy variable for reviews of high variance hotels
+hotel_review_df['high_var_dummy'] = hotel_review_df['var'].apply(lambda x: 1 if x > 1.0 else 0)
+hotel_review_df['var_to_mu'] = 0
+hotel_review_df.loc[hotel_review_df['high_var_dummy'] == 1, 'var_to_mu'] = abs(hotel_review_df['average_rating'] - hotel_review_df['review_rating'])
+
+
+# If the variance in review ratings and the number of reviews is high, then we
+# assume that a part of the variance can be explained by taste differences in customers.
+# The rest might be e.g. due to timing.
+# Therefore we add a varibale 'taste_diff_dummy' that is 1 if the variance is larger 1
+# and 0 otherwise.
+
+hotel_review_df['taste_diff_dummy'] = hotel_review_df['var_to_mu'].apply(lambda x: 1 if x > 2 else 0)
+
+
+
 
 
 ##############################################################################
 # Use a Sample for Feature Selection
 ##############################################################################
-#sample_reviews_df = reviews_df.sample(frac = 0.1, replace = False, random_state=42)
 
-# select only relevant columns
-reviews_df = hotel_review_df[['bad_review_dummy',
-                              'review_rating',
-                              'review']]
-
-bad_reviews = reviews_df[reviews_df["bad_review_dummy"]==1].iloc[0:5000,:]
-good_reviews = reviews_df[reviews_df["bad_review_dummy"]==0].iloc[0:5000,:]
+bad_reviews = hotel_review_df[hotel_review_df["bad_review_dummy"]==1].iloc[0:5000,:]
+good_reviews = hotel_review_df[hotel_review_df["bad_review_dummy"]==0].iloc[0:5000,:]
 
 sample_frames = [bad_reviews, good_reviews]
 sample_reviews_df = pd.concat(sample_frames)
@@ -157,18 +190,27 @@ tfidf_df.columns = ["word_" + str(x) for x in tfidf_df.columns]
 tfidf_df.index = sample_reviews_df.index
 sample_reviews_df = pd.concat([sample_reviews_df, tfidf_df], axis=1)
 
-print("done")
+
 
 # Save DF
-#sample_reviews_df.to_csv("sentiment_analysis_1_TA.csv", encoding='utf8', index=False)
-sample_reviews_df.to_parquet("sample_sentiment_analysis_1_TA.parquet", compression=None)
+sample_reviews_df.to_parquet("sample_sentiment_analysis.parquet", compression=None)
 
 
 # Read csv with parquet
-sample_reviews_df = pd.read_parquet("sample_sentiment_analysis_1_TA.parquet", engine="fastparquet")
+sample_reviews_df = pd.read_parquet("sample_sentiment_analysis.parquet", engine="fastparquet")
 
 
 
+
+
+
+
+
+# select only relevant columns
+reviews_df = sample_reviews_df[['bad_review_dummy',
+                              'review_rating',
+                              'review',
+                              'review_clean']]
 
 ##############################################################################
 # Wordcloud

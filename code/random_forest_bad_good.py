@@ -1,9 +1,11 @@
 ##############################################################################
 ##############################################################################
 #                                                                            #
-#                      Random Forrest Prediction of NLP                      #
+#                          Random Forrest Prediction                         #
 #                                good vs bad                                 #
 #                               Master Thesis                                #
+#                                                                            #
+#                               Daniil Bulat                                 #
 #                                                                            #
 ##############################################################################
 ##############################################################################
@@ -40,12 +42,15 @@ from sklearn.svm import SVC
 # Data Prearation
 ##############################################################################
 
-# Full Review Table
-hotel_review_df = pd.read_csv('UK_hotel_reviews.csv')
+# Read in DF with parquet
+full_sample_reviews_df = pd.read_parquet("sample_sentiment_analysis.parquet", engine="fastparquet")
 
-# Read csv with parquet
-sample_reviews_df = pd.read_parquet("sample_sentiment_analysis_1_TA.parquet", engine="fastparquet")
 
+# select only relevant columns
+sample_reviews_df = full_sample_reviews_df[['bad_review_dummy',
+                                            'review_rating',
+                                            'review',
+                                            'review_clean']]
 
 
 ##############################################################################

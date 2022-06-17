@@ -47,121 +47,19 @@ from sklearn import utils
 from sklearn.svm import SVC
 
 
-# Read CSV
-hotel_review_df = pd.read_csv("data/clean_tripadvisor_review_table.csv")
 
-
-# Add Variance of Reviews Column
-mu = []
-var = []
-
-for i in range(0,len(hotel_review_df['review_rating'])):
-    distribution_list = []
-    distribution_list.extend([5] * int(hotel_review_df['excellent'].iloc[i]))
-    distribution_list.extend([4] * int(hotel_review_df['very_good'].iloc[i]))
-    distribution_list.extend([3] * int(hotel_review_df['average'].iloc[i]))
-    distribution_list.extend([2] * int(hotel_review_df['poor'].iloc[i]))
-    distribution_list.extend([1] * int(hotel_review_df['terrible'].iloc[i]))
-    
-    mu.append(np.mean(distribution_list))
-    var.append(np.var(distribution_list))
+# Read in DF with parquet
+full_sample_reviews_df = pd.read_parquet("data/sample_sentiment_analysis.parquet", engine="fastparquet")
 
 
 
-hotel_review_df['mu'] = mu
-hotel_review_df['var'] = var
-
-
-
-# Add a dummy variable for reviews of high variance hotels
-hotel_review_df['high_var_dummy'] = hotel_review_df['var'].apply(lambda x: 1 if x > 1.0 else 0)
-hotel_review_df['var_to_mu'] = 0
-hotel_review_df.loc[hotel_review_df['high_var_dummy'] == 1, 'var_to_mu'] = abs(hotel_review_df['average_rating'] - hotel_review_df['review_rating'])
-
-
-# If the variance in review ratings and the number of reviews is high, then we
-# assume that a part of the variance can be explained by taste differences in customers.
-# The rest might be e.g. due to timing.
-# Therefore we add a varibale 'taste_diff_dummy' that is 1 if the variance is larger 1
-# and 0 otherwise.
-
-hotel_review_df['taste_diff_dummy'] = hotel_review_df['var_to_mu'].apply(lambda x: 1 if x > 2 else 0)
-
-
-##############################################################################
-# Use a Sample for Feature Selection
-##############################################################################
 
 # select only relevant columns
-reviews_df = hotel_review_df[['taste_diff_dummy',
-                              'review_clean']]
-
-
-bad_reviews = reviews_df[reviews_df["taste_diff_dummy"]==1].iloc[0:5000,:]
-good_reviews = reviews_df[reviews_df["taste_diff_dummy"]==0].iloc[0:5000,:]
-
-sample_frames = [bad_reviews, good_reviews]
-sample_reviews_df = pd.concat(sample_frames)
-
-
-
-
-##############################################################################
-# Sentiment Analysis
-##############################################################################
-
-# Vader Lexicon
-nltk.download('vader_lexicon')
-sid = SentimentIntensityAnalyzer()
-
-new_words = {
-    'exceptional': 0.9,
-    'overprice': -3.3,
-    'bed bug': -6.6,
-    'small': -3.0,
-}
-
-sid.lexicon.update(new_words)
-
-
-# add sentiment anaylsis columns
-sample_reviews_df["sentiments"] = sample_reviews_df["review_clean"].apply(lambda x: sid.polarity_scores(str(x)))
-sample_reviews_df = pd.concat([sample_reviews_df.drop(['sentiments'], axis=1),
-                               sample_reviews_df['sentiments'].apply(pd.Series)], axis=1)
-
-# create doc2vec vector columns
-documents = [TaggedDocument(doc, [i]) for i, doc in enumerate(sample_reviews_df["review_clean"].apply(lambda x: str(x).split(" ")))]
-
-
-# train a Doc2Vec model with our text data
-model = Doc2Vec(documents, vector_size=5, window=2, min_count=1, workers=4) # 26.5 sec
-
-
-# transform each document into a vector data  time: 33.54 sec
-doc2vec_df = sample_reviews_df["review_clean"].apply(lambda x: model.infer_vector(x.split(" "))).apply(pd.Series)
-doc2vec_df.columns = ["doc2vec_vector_" + str(x) for x in doc2vec_df.columns]
-sample_reviews_df = pd.concat([sample_reviews_df, doc2vec_df], axis=1)
-
-
-
-# add tf-idfs columns
-tfidf = TfidfVectorizer(min_df = 10)
-tfidf_result = tfidf.fit_transform(sample_reviews_df["review_clean"]).toarray()
-tfidf_df = pd.DataFrame(tfidf_result, columns = tfidf.get_feature_names())
-tfidf_df.columns = ["word_" + str(x) for x in tfidf_df.columns]
-tfidf_df.index = sample_reviews_df.index
-sample_reviews_df = pd.concat([sample_reviews_df, tfidf_df], axis=1)
-
-
-
-# Save DF
-#sample_reviews_df.to_csv("sentiment_analysis_1_TA.csv", encoding='utf8', index=False)
-sample_reviews_df.to_parquet("taste_sample_sentiment_analysis.parquet", compression=None)
-
-
-# Read csv with parquet
-sample_reviews_df = pd.read_parquet("taste_sample_sentiment_analysis.parquet", engine="fastparquet")
-
+sample_reviews_df = full_sample_reviews_df[['bad_review_dummy',
+                                            'taste_diff_dummy',
+                                            'review_rating',
+                                            'review',
+                                            'review_clean']]
 
 
 
@@ -368,26 +266,81 @@ rf_random.best_params_
 
 # Reevaluate Model
 y_preds = rf_random.predict(X_test)
-print(rf_random.score(X_train, y_train))  #0.9748571428571429
-print(rf_random.score(X_test, y_test))   #0.8956666666666667
+print(rf_random.score(X_train, y_train))  #1.0
+print(rf_random.score(X_test, y_test))   #0.8773333333333333
 
 # Confusion Matrix
 print(metrics.confusion_matrix(y_test, y_preds))
+#[[1240  233]
+#[ 135 1392]]
 
 
-y_preds_rand = rf_random.predict(X_test)
-random_gs_result_df = pd.DataFrame(y_test)
-random_gs_result_df['y_pred'] = y_preds_rand
+# Evaluate Results
 
-random_gs_result_df["wrong_prediction"] = random_gs_result_df['bad_review_dummy'] != random_gs_result_df['y_pred']
+# Base Model
+print('Train Accuracy = {:0.2f}%.'.format(rf.score(X_train, y_train)*100))  # 1 (overfitting)
+print('Test Accuracy = {:0.2f}%.'.format(rf.score(X_test, y_test)*100)) # 0.8726666666666667
+base_accuracy = rf.score(X_test, y_test)
 
-false_predictions = random_gs_result_df[random_gs_result_df["wrong_prediction"] == True]
+
+# Random Grid Model
+print('Train Accuracy = {:0.2f}%.'.format(rf_random.score(X_train, y_train)*100)) #1.0
+print('Test Accuracy = {:0.2f}%.'.format(rf_random.score(X_test, y_test)*100))   #0.8773333333333333
+random_accuracy = rf_random.score(X_test, y_test)
+
+# Improvement
+print('Improvement of {:0.2f}%.'.format( 100 * (random_accuracy - base_accuracy) / base_accuracy))
 
 
 
 
 ##############################################################################
-# Grid Search
+# Non-Random Grid Search for new RF Clasifier
+##############################################################################
+
+# Grid Search based on above results
+from sklearn.model_selection import GridSearchCV
+
+param_grid = {
+    'bootstrap': [False],
+    'max_depth': [90, 100, 110],
+    'max_features': ['auto'],
+    'min_samples_leaf': [1, 2, 3, 4],
+    'min_samples_split': [8, 10, 12],
+    'n_estimators': [250, 500, 1000]
+}
+
+
+
+# Create a based model
+rf = RandomForestRegressor()
+# Instantiate the grid search model
+grid_search = GridSearchCV(estimator = rf, param_grid = param_grid, 
+                          cv = 4, n_jobs = -1, verbose = 2)
+
+grid_search.fit(X_train, y_train)
+grid_search.best_params_
+
+
+## Reevaluate Results
+# Random Grid Model
+print('Train Accuracy = {:0.2f}%.'.format(rf_random.score(X_train, y_train)*100)) #1.0
+print('Test Accuracy = {:0.2f}%.'.format(rf_random.score(X_test, y_test)*100))   #0.8773333333333333
+random_accuracy = rf_random.score(X_test, y_test)
+
+# non_random Grid Search Model
+print('Train Accuracy = {:0.2f}%.'.format(grid_search.score(X_train, y_train)*100)) #
+print('Test Accuracy = {:0.2f}%.'.format(grid_search.score(X_test, y_test)*100))   #
+grid_search_accuracy = grid_search.score(X_test, y_test)
+
+# Improvement
+print('Improvement of {:0.2f}%.'.format( 100 * (grid_search_accuracy - random_accuracy) / random_accuracy))
+
+
+
+
+##############################################################################
+# Other Grid Search
 ##############################################################################
 
 param_grid = { 
@@ -396,13 +349,13 @@ param_grid = {
 }
 
 
-grid = GridSearchCV(SVC(), param_grid, refit=True, verbose=3)
-grid.fit(X_train,y_train) 
+other_grid = GridSearchCV(SVC(), param_grid, refit=True, verbose=3)
+other_grid.fit(X_train,y_train) 
 
-grid.best_params_
+other_grid.best_params_
 
 
-#grid.best_params_ = {'C': 500, 'gamma': 0.001}
+#other_grid.best_params_ = {'C': 500, 'gamma': 0.001}
 
 param_grid = { 
   'C': [500], 
@@ -410,32 +363,56 @@ param_grid = {
 }
 
 
-grid = GridSearchCV(SVC(), param_grid, refit=True, verbose=3)
-grid.fit(X_train,y_train) 
-
-
-print(grid.score(X_train, y_train)) #0.9852857142857143
-print(grid.score(X_test, y_test)) #0.8903333333333333
-
-###
-y_preds_grid = grid.predict(X_test)
-grid_result_df = pd.DataFrame(y_test)
-grid_result_df['y_pred'] = y_preds_grid
-
-grid_result_df["wrong_prediction"] = grid_result_df['bad_review_dummy'] != grid_result_df['y_pred']
-
-grid_false_predictions = grid_result_df[grid_result_df["wrong_prediction"] == True]
+other_grid = GridSearchCV(SVC(), param_grid, refit=True, verbose=3)
+other_grid.fit(X_train,y_train) 
 
 
 
+## Reevaluate Results
+# non_random Grid Search Model
+print('Train Accuracy = {:0.2f}%.'.format(grid_search.score(X_train, y_train)*100)) #
+print('Test Accuracy = {:0.2f}%.'.format(grid_search.score(X_test, y_test)*100))   #
+grid_search_accuracy = grid_search.score(X_test, y_test)
 
+# other Grid Search Model
+print('Train Accuracy = {:0.2f}%.'.format(other_grid.score(X_train, y_train)*100)) #0.9341428571428572
+print('Test Accuracy = {:0.2f}%.'.format(other_grid.score(X_test, y_test)*100))   #0.8883333333333333
+other_grid_search_accuracy = other_grid.score(X_test, y_test)
 
+# Improvement
+print('Improvement of {:0.2f}%.'.format( 100 * (other_grid_search_accuracy - grid_search_accuracy) / grid_search_accuracy))
 
 
 
 
 
 ##############################################################################
+# Result DF
+##############################################################################
+
+y_pred_other_grid = other_grid.predict(X_test)
+
+
+taste_diff_result_df = pd.DataFrame(y_test)
+taste_diff_result_df['y_predicted'] = y_pred_other_grid
+
+
+
+full_sample_reviews_df = full_sample_reviews_df.drop(['taste_diff_dummy','Unnamed: 0.1', 'Unnamed: 0', 'hotel_id', 'review_title', 'review_text', 'review_clean'], 1)
+taste_diff_result_df = taste_diff_result_df.join(full_sample_reviews_df)
+
+
+
+# Save DF
+taste_diff_result_df.to_parquet("data/taste_diff_result_df_TEST.parquet", compression=None)
+
+
+# Read with parquet
+taste_diff_result_df = pd.read_parquet("data/taste_diff_result_df_TEST.parquet", engine="fastparquet")
+
+
+
+
 
 
 
