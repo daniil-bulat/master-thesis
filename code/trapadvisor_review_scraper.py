@@ -156,6 +156,23 @@ df_new_hotel_reviews = df_new_hotel_reviews[df_new_hotel_reviews['review_rating'
 df_new_hotel_reviews['poor'] = df_new_hotel_reviews['poor'].apply(pd.to_numeric)
 df_new_hotel_reviews = df_new_hotel_reviews.reset_index(drop=True)
 
+def add_ranking(df):
+    rankings = []
+    for j in df['tripadv_ranking']:
+        sep = ' '
+        rank = j.split(sep, 1)[0].replace('#', '')
+        rank = int(rank.replace(',', ''))
+        rank_of = int(j.split(sep, 3)[2].replace(',', ''))
+        rankings.append(rank / rank_of)
+    
+    df['tripadv_ranking'] = rankings
+    return df
+        
+        
+df_new_hotel_reviews = add_ranking(df_new_hotel_reviews)
+
+
+
 
 # Save DF to csv
 df_new_hotel_reviews.to_csv('UK_hotel_reviews.csv',encoding="utf-8")

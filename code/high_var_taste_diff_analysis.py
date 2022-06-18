@@ -12,51 +12,27 @@
 
 import pandas as pd
 import os
-import nltk
-from nltk.corpus import wordnet
-import string
-from sklearn import metrics
-from nltk import pos_tag
-from nltk.corpus import stopwords
-from nltk.tokenize import WhitespaceTokenizer
-from nltk.stem import WordNetLemmatizer
-from nltk.sentiment.vader import SentimentIntensityAnalyzer
-from gensim.test.utils import common_texts
-from gensim.models.doc2vec import Doc2Vec, TaggedDocument
-from wordcloud import WordCloud
-import matplotlib.pyplot as plt
-from sklearn.feature_extraction.text import TfidfVectorizer
+import numpy as np
 import seaborn as sns
+import matplotlib.pyplot as plt
+import gc
+from sklearn import metrics
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import roc_curve, auc, roc_auc_score
-from nltk.metrics import ConfusionMatrix
-import numpy as np
-from sklearn.metrics import average_precision_score, precision_recall_curve
-from funcsigs import signature
-from wordcloud import WordCloud
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import GridSearchCV
-import time
-from dask import dataframe as dd
-import dask.multiprocessing
-import pyarrow
-from sklearn import preprocessing
-from sklearn import utils
 from sklearn.svm import SVC
 from sklearn.feature_selection import SelectKBest,f_regression
 from sklearn.pipeline import Pipeline
-from sklearn.linear_model import LinearRegression
-from sklearn.neighbors import KNeighborsRegressor
-from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import roc_curve, auc, roc_auc_score
 
+data_dir = '/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/data/'
+figure_dir = '/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/figures/'
 
-
-
+# Directory
+os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/code')
+from random_forest_functions import roc_curve_custom, pr_curve_custom
 
 
 ##############################################################################
@@ -72,14 +48,23 @@ full_hotel_review_df = pd.read_parquet("data/full_hotel_review_df.parquet", engi
 
 
 
-
-
 ##############################################################################
 # Select Sample
 ##############################################################################
 
 # select only relevant columns
-sample_reviews_df = full_hotel_review_df[['taste_diff_dummy']]
+sample_reviews_df = full_hotel_review_df[(full_hotel_review_df['many_reviews_dummy']==1) & (full_hotel_review_df['high_var_dummy']==1)]
+sample_reviews_df = sample_reviews_df[['taste_diff_dummy']]
+
+
+
+slim_nlp_review_df = nlp_review_df.drop(['review_title','review_text','review', 'review_clean'], 1)
+
+
+# join with nlp df
+sample_reviews_df = sample_reviews_df.join(slim_nlp_review_df)
+
+
 
 bad_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==1].iloc[0:5000,:]
 good_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==0].iloc[0:5000,:]
@@ -87,8 +72,17 @@ good_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==0].iloc[
 sample_frames = [bad_reviews, good_reviews]
 sample_reviews_df = pd.concat(sample_frames)
 
-# join with nlp df
-sample_reviews_df = sample_reviews_df.join(nlp_review_df)
+
+# free up memory from unneccessary variables / df's
+del(bad_reviews, good_reviews, sample_frames)
+gc.collect()
+
+
+
+
+
+
+
 
 
 
@@ -165,10 +159,6 @@ dds.to_csv("feature_list_taste.csv")
 rf = RandomForestClassifier(n_estimators = 90, random_state = 77)
 rf.fit(X_train, y_train)
 
-# show feature importance
-feature_importances_df = pd.DataFrame({"feature": features, "importance": rf.feature_importances_}).sort_values("importance", ascending = False)
-feature_importances_df.head(10)
-
 
 # predictive power
 y_preds = rf.predict(X_test)
@@ -182,6 +172,9 @@ print(metrics.confusion_matrix(y_test, y_preds))
 
 # not very balanced, check that!!!
 
+# show feature importance
+feature_importances_df = pd.DataFrame({"feature": features, "importance": rf.feature_importances_}).sort_values("importance", ascending = False)
+feature_importances_df.head(10)
 
 
 
@@ -377,16 +370,16 @@ other_grid.fit(X_train,y_train)
 other_grid.best_params_
 
 
-#other_grid.best_params_ = {'C': 500, 'gamma': 0.001}
+#other_grid.best_params_ = {'C': 5000, 'gamma': 0.0001}
 
 param_grid = { 
-  'C': [500], 
-  'gamma': [0.001]
-}
+  'C': [5000], 
+  'gamma': [0.0001],
+  'kernel': ['rbf']}
 
 
 other_grid = GridSearchCV(SVC(), param_grid, refit=True, verbose=3)
-other_grid.fit(X_train,y_train) 
+other_grid.fit(X_train,y_train)
 
 
 
@@ -397,8 +390,8 @@ print('Test Accuracy = {:0.2f}%.'.format(grid_search.score(X_test, y_test)*100))
 grid_search_accuracy = grid_search.score(X_test, y_test)
 
 # other Grid Search Model
-print('Train Accuracy = {:0.2f}%.'.format(other_grid.score(X_train, y_train)*100)) #0.9341428571428572
-print('Test Accuracy = {:0.2f}%.'.format(other_grid.score(X_test, y_test)*100))   #0.8883333333333333
+print('Train Accuracy = {:0.2f}%.'.format(other_grid.score(X_train, y_train)*100)) # 0.9591
+print('Test Accuracy = {:0.2f}%.'.format(other_grid.score(X_test, y_test)*100))   #0.8883
 other_grid_search_accuracy = other_grid.score(X_test, y_test)
 
 # Improvement
@@ -413,27 +406,78 @@ print('Improvement of {:0.2f}%.'.format( 100 * (other_grid_search_accuracy - gri
 ##############################################################################
 
 
+# Predicted Values
+y_preds = other_grid.predict(X_test)
 
-y_preds = rf.predict(X_test)
+# Confusion Matrix
+print(metrics.confusion_matrix(y_test, y_preds))
+#[[1267  206]
+#[ 145 1382]]
+
+# show feature importance
+feature_importances_df = pd.DataFrame({"feature": features, "importance": other_grid.feature_importances_}).sort_values("importance", ascending = False)
+feature_importances_df.head(10)
 
 
-X_test_full = sample_reviews_df.drop(['taste_diff_dummy','review_clean'],1)
+# ROC Curve
+roc_curve_custom(other_grid, X_test, y_test, y_preds, 'taste_SVM_ROC_curve.png', figure_dir)
 
 
+# PR Curve
+pr_curve_custom(y_test, y_preds, 'taste_SVM_PR_curve.png', figure_dir)
+
+
+
+
+# Results
+
+
+# select only relevant columns
+sample_reviews_df = full_hotel_review_df[(full_hotel_review_df['many_reviews_dummy']==1) & (full_hotel_review_df['high_var_dummy']==1)]
+sample_reviews_df = sample_reviews_df[['taste_diff_dummy']]
+
+
+
+slim_nlp_review_df = nlp_review_df.drop(['review_title','review_text','review', 'review_clean'], 1)
+
+
+# join with nlp df
+sample_reviews_df = sample_reviews_df.join(slim_nlp_review_df)
+
+
+
+
+# other Grid Search Model
+print('Test Accuracy = {:0.2f}%.'.format(other_grid.score(x_full, y_full)*100))
+other_grid_search_accuracy = other_grid.score(X_test, y_test)
+
+
+
+
+
+
+####
+y_data = full_hotel_review_df[['taste_diff_dummy']]
+x_data = slim_nlp_review_df
+
+full_data = y_data.join(x_data)
+full_data = full_data.sample(frac=0.2)
+
+x_full = full_data.drop(['taste_diff_dummy'], 1)
 
 # If the algorithm works, we now predict the whole data set,
 # and look if it found sound bad taste reviews in low var hotels
 
-y_pred_full = rf.predict(X_test_full)
+full_y_preds = other_grid.predict(x_full)
 
 
 
 
+# Predicted Results
+full_data['y_predicted'] = full_y_preds
 
-
-
-
-
+low_num_reviews = full_data[full_data['many_reviews_dummy']==0]
+low_var_reviews = full_data[full_data['high_var_dummy']==0]
 
 
 

@@ -11,41 +11,26 @@
 ##############################################################################
 
 import pandas as pd
+import numpy as np
 import os
-import string
-from sklearn import metrics
-from wordcloud import WordCloud
+import gc
 import matplotlib.pyplot as plt
-from sklearn.feature_extraction.text import TfidfVectorizer
-import seaborn as sns
+from sklearn import metrics
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import roc_curve, auc, roc_auc_score
-from nltk.metrics import ConfusionMatrix
-import numpy as np
 from sklearn.metrics import average_precision_score, precision_recall_curve
 from funcsigs import signature
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import GridSearchCV
-import time
-from dask import dataframe as dd
-import dask.multiprocessing
-import pyarrow
-from sklearn import preprocessing
-from sklearn import utils
 from sklearn.svm import SVC
 from sklearn.feature_selection import SelectKBest,f_regression
 from sklearn.pipeline import Pipeline
-from sklearn.linear_model import LinearRegression
-from sklearn.neighbors import KNeighborsRegressor
-from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import roc_curve, auc, roc_auc_score
 
 
-
+data_dir = '/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/data/'
+figure_dir = '/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/figures/'
 
 
 ##############################################################################
@@ -62,7 +47,6 @@ full_hotel_review_df = pd.read_parquet("data/full_hotel_review_df.parquet", engi
 
 
 
-
 ##############################################################################
 # Select Sample
 ##############################################################################
@@ -70,16 +54,24 @@ full_hotel_review_df = pd.read_parquet("data/full_hotel_review_df.parquet", engi
 # select only relevant columns
 sample_reviews_df = full_hotel_review_df[['bad_review_dummy']]
 
+slim_nlp_review_df = nlp_review_df.drop(['review_title','review_text','review', 'review_clean'], 1)
+
+
+# join with nlp df
+sample_reviews_df = sample_reviews_df.join(slim_nlp_review_df)
+
+
+
 bad_reviews = sample_reviews_df[sample_reviews_df["bad_review_dummy"]==1].iloc[0:5000,:]
 good_reviews = sample_reviews_df[sample_reviews_df["bad_review_dummy"]==0].iloc[0:5000,:]
 
 sample_frames = [bad_reviews, good_reviews]
 sample_reviews_df = pd.concat(sample_frames)
 
-# join with nlp df
-sample_reviews_df = sample_reviews_df.join(nlp_review_df)
 
-
+# free up memory from unneccessary variables / df's
+del(bad_reviews, good_reviews, sample_frames, slim_nlp_review_df)
+gc.collect()
 
 
 
@@ -91,6 +83,8 @@ sample_reviews_df = sample_reviews_df.join(nlp_review_df)
 label = "bad_review_dummy"
 ignore_cols = [label]
 features = [c for c in sample_reviews_df.columns if c not in ignore_cols]
+
+
 
 # split the data into train and test
 X_train, X_test, y_train, y_test = train_test_split(sample_reviews_df[features], sample_reviews_df[label], test_size = 0.30, random_state = 77)
@@ -104,9 +98,6 @@ X_train, X_test, y_train, y_test = train_test_split(sample_reviews_df[features],
 # Feature Elimination
 ##############################################################################
 
-data = sample_reviews_df[features]
-target = sample_reviews_df[label]
-
 
 pipeline = Pipeline(
     [('selector',SelectKBest(f_regression)), #score variables according to F-score
@@ -118,35 +109,19 @@ pipeline = Pipeline(
 search = GridSearchCV(
     estimator = pipeline,
     param_grid = {
-        'selector__k':[1000,2500,3205] , 
-        'model__n_estimators':np.arange(90,250,20)},
-    n_jobs=-1,
+        'selector__k':[500,1000,5000,9762], 
+        'model__n_estimators': [50,90,120,200,500]}, #np.arange(90,250,20)},
+    n_jobs=2,
     scoring="neg_mean_squared_error",
-    cv=4,
+    cv=3,
     verbose=3)
 
 
-search.fit(data,target)
-search.best_params_
-search.best_score_
+search.fit(sample_reviews_df[features],sample_reviews_df[label])
+search.best_params_ # n_est=200, k=9762
+search.best_score_ #neg_mean_squared_error: -0.1428 (-0.079)
 
-#[CV 4/4] END model__n_estimators=90, selector__k=1000;, score=-0.150 total time= 3.1min
-#[CV 4/4] END model__n_estimators=90, selector__k=3205;, score=-0.150 total
-
-# search.best_params_ = 'model__n_estimators': 230, 'selector__k': 2500}
-
-final_pipeline = search.best_estimator_
-final_classifier = final_pipeline.named_steps['selector']
-
-select_indices = final_pipeline.named_steps['selector'].transform(
-    np.arange(len(data.columns)).reshape(1, -1))
-
-
-feature_names = X_train.columns[select_indices]
-
-feature_names = feature_names.tolist()
-dds = pd.DataFrame(feature_names)
-dds.to_csv("feature_list.csv")
+# The grid search results say that all features should be used with 200 estimators.
 
 
 
@@ -160,15 +135,17 @@ rf.fit(X_train, y_train)
 
 # predictive power
 y_preds = rf.predict(X_test)
-print(rf.score(X_train, y_train))
-print(rf.score(X_test, y_test))
+print(rf.score(X_train, y_train)) # 1.0
+print(rf.score(X_test, y_test))   # 0.893
 
 # Confusion Matrix
 print(metrics.confusion_matrix(y_test, y_preds))
+#[[1338  135]
+#[ 186 1341]]
 
 # show feature importance
 feature_importances_df = pd.DataFrame({"feature": features, "importance": rf.feature_importances_}).sort_values("importance", ascending = False)
-feature_importances_df.head(20)
+feature_importances_df.head(10)
 
 
 
@@ -197,7 +174,7 @@ plt.ylabel('True Positive Rate')
 plt.title('Receiver operating characteristic example')
 plt.legend(loc="lower right")
 plt.show()
-plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/figures/good_bad_ROC_curve.png')
+plt.savefig(figure_dir + 'good_bad_ROC_curve.png')
 
 
 
@@ -212,7 +189,6 @@ plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/f
 ##############################################################################
 
 average_precision = average_precision_score(y_test, y_pred)
-
 precision, recall, _ = precision_recall_curve(y_test, y_pred)
 
 # In matplotlib < 1.5, plt.fill_between does not have a 'step' argument
@@ -230,7 +206,8 @@ plt.ylabel('Precision')
 plt.ylim([0.0, 1.05])
 plt.xlim([0.0, 1.0])
 plt.title('2-class Precision-Recall curve: AP={0:0.2f}'.format(average_precision))
-plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/figures/precision_recall.png')
+plt.savefig(figure_dir + 'precision_recall_good_bad.png')
+
 
 
 
@@ -246,19 +223,19 @@ plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/f
 ## Tuning the Random forest 
 
 # Number of trees in random forest
-n_estimators = np.linspace(10, 300, int((300-10)/20) + 1, dtype=int)
+n_estimators = [200,250]
 
 # Number of features to consider at every split
 max_features = ['auto', 'sqrt']
 
 # Maximum number of levels in tree
-max_depth = [1, 5, 10, 20, 50, 75, 100]
+max_depth = [10, 50, 75, 100]
 
 # Minimum number of samples required to split a node
-min_samples_split = [1, 2, 5, 10, 15, 20]
+min_samples_split = [1, 2, 5]
 
 # Minimum number of samples required at each leaf node
-min_samples_leaf = [1, 2, 3, 4]
+min_samples_leaf = [1, 2, 3]
 
 # Method of selecting samples for training each tree
 bootstrap = [True, False]
@@ -279,7 +256,7 @@ rf_base = RandomForestClassifier()
 
 rf_random = RandomizedSearchCV(estimator = rf_base,
                                param_distributions = random_grid,
-                               n_iter = 30, cv = 5,
+                               n_iter = 30, cv = 3,
                                verbose=2,
                                random_state=77, n_jobs = 4)
 
@@ -300,35 +277,33 @@ print(metrics.confusion_matrix(y_test, y_preds))
 
 
 ##############################################################################
-# Grid Search
+# Grid Search via SVM Support Vector Machine
 ##############################################################################
 
 param_grid = { 
-  'C': [0.1, 1, 10, 100, 500], 
-  'gamma': [1, 0.1, 0.01, 0.001, 0.0001]
-}
+  'C': [100,500,1000,2500,5000], # C is the penalty parameter, which represents misclassification or error term
+  'gamma': [0.1,0.01,0.001,0.0001],  # Gamma defines how far influences the calculation of plausible line of separation
+  'kernel': ['rbf', 'sigmoid']}
 
 
 grid = GridSearchCV(SVC(), param_grid, refit=True, verbose=3)
-grid.fit(X_train,y_train) 
+grid.fit(X_train,y_train) # 5CV
 
 grid.best_params_
-
-
-#grid.best_params_ = {'C': 500, 'gamma': 0.001}
+# RESULT: grid.best_params_ = {'C': 5000, 'gamma': 0.0001,'kernel': 'rbf'}
 
 param_grid = { 
-  'C': [500], 
-  'gamma': [0.001]
-}
+  'C': [5000], 
+  'gamma': [0.0001],
+  'kernel': ['rbf']}
 
 
 grid = GridSearchCV(SVC(), param_grid, refit=True, verbose=3)
 grid.fit(X_train,y_train) 
 
 
-print(grid.score(X_train, y_train)) #0.9852857142857143
-print(grid.score(X_test, y_test)) #0.8903333333333333
+print(grid.score(X_train, y_train)) #0.9801428571428571
+print(grid.score(X_test, y_test)) #0.9063333333333333
 
 ###
 y_preds_grid = grid.predict(X_test)

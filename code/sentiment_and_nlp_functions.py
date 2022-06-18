@@ -131,7 +131,7 @@ def show_wordcloud(data, title = None):
 
 def add_descriptive_variables(df, upper_bad_review_threshold, high_var_threshold, distance_threshold):
 
-    df.drop(['review_title', 'review_text'],1)
+    df.drop(['review_title', 'review_text', 'Unnamed: 0.1', 'Unnamed: 0'],1)
     
     # Add Bad Review Dummy
     df["bad_review_dummy"] = df["review_rating"].apply(lambda x: 1 if x < upper_bad_review_threshold else 0)
@@ -158,7 +158,7 @@ def add_descriptive_variables(df, upper_bad_review_threshold, high_var_threshold
     df['many_reviews_dummy'] = df['num_reviews'].apply(lambda x: 1 if x > np.mean(df['num_reviews']) else 0)
     df['high_var_dummy'] = df['var'].apply(lambda x: 1 if x > high_var_threshold else 0)
     df['dist_to_mu'] = 0
-    df.loc[df['high_var_dummy'] == 1, 'dist_to_mu'] = abs(df['average_rating'] - df['review_rating'])
+    df.loc[(df['high_var_dummy'] == 1) & (df['many_reviews_dummy'] == 1), 'dist_to_mu'] = abs(df['average_rating'] - df['review_rating'])
     
     # If the variance in review ratings and the number of reviews is high, then we
     # assume that a part of the variance can be explained by taste differences in customers.
