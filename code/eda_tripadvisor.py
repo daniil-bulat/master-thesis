@@ -10,17 +10,15 @@
 ##############################################################################
 
 import os
-import math
 import matplotlib.pyplot as plt
-import string
 import pandas as pd
 import numpy as np
 import seaborn as sns
 
 
 # Data
-os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/data')
-df_new_hotel_reviews = pd.read_csv('UK_hotel_reviews.csv')
+os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis')
+df_new_hotel_reviews = pd.read_csv('data/UK_hotel_reviews.csv')
 
 
 ###############################################################################
@@ -53,25 +51,28 @@ sns.barplot(x,y)
 
 
 # BOXPLOT
-import seaborn as sns
-sns.set_theme(style="whitegrid")
+sns.set_theme(style="whitegrid", palette="pastel")
 
 ax = sns.boxplot(x="average_rating", y="num_reviews", data=df_new_hotel_reviews)
+plt.title('Number of Reviews vs Average Score')
+plt.xlabel('Average Score')
+plt.ylabel('Number of Reviews')
+plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/figures/boxplot.png')
+
 
 
 
 # Total_Number_of_Reviews vs Average_Score
-sns.set_theme(color_codes=True)
-
 sns.regplot(x='average_rating', y="num_reviews", data=df_new_hotel_reviews,
-            scatter_kws={"color": "blue"}, line_kws={"color": "red"})
+            scatter_kws={"color": (0.5529411764705883, 0.6274509803921569, 0.796078431372549)},
+            line_kws={"color": (0.9058823529411765, 0.5411764705882353, 0.7647058823529411)})
 
 
 
 plt.title('Total Number of Reviews vs Average Score')
 plt.xlabel('Average Score')
 plt.ylabel('Total Number of Reviews')
-plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/trip_advisor/figures/number_of_reviews_v_avScore.png')
+plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/figures/number_of_reviews_v_avScore.png')
 
 
 
@@ -81,60 +82,17 @@ df_new_hotel_reviews['average_rating'].value_counts(normalize = True)
 
 # Histogram
 sns.distplot(df_new_hotel_reviews['average_rating'], hist=True, kde=False, 
-             bins=int(180/5), color = 'blue',
+             bins=int(180/5), color = (0.5529411764705883, 0.6274509803921569, 0.796078431372549),
              hist_kws={'edgecolor':'black'})
 
 # Lables
 plt.title('Histogram of Average Score')
 plt.xlabel('Average Score')
 plt.ylabel('Frequency')
-plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/figures/Histogram_of_AvScore.png')
+plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/figures/Histogram_of_AvScore.png')
 
 
 
-###############################################################################
-
-## Review_Total_Negative_Word_Counts
-np.mean(reviews_df['Review_Total_Negative_Word_Counts'])
-np.std(reviews_df['Review_Total_Negative_Word_Counts'])
-
-# Histogram
-sns.distplot(reviews_df['Review_Total_Negative_Word_Counts'], hist=True, kde=False, 
-             bins=int(20), color = 'red',
-             hist_kws={'edgecolor':'black'})
-# Lables
-plt.title('Negative Review Word Count')
-plt.xlabel('Word')
-plt.ylabel('Frequency')
-plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/figures/negative_review_word_count.png')
-
-
-## Review_Total_Positive_Word_Counts
-np.mean(reviews_df['Review_Total_Positive_Word_Counts'])
-np.std(reviews_df['Review_Total_Positive_Word_Counts'])
-
-# Histogram
-sns.distplot(reviews_df['Review_Total_Positive_Word_Counts'], hist=True, kde=False, 
-             bins=int(20), color = 'green',
-             hist_kws={'edgecolor':'black'})
-# Lables
-plt.title('Positive Review Word Count')
-plt.xlabel('Word')
-plt.ylabel('Frequency')
-plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/figures/positive_review_word_count.png')
-
-
-
-
-
-
-## Mean Characters
-print(np.mean(reviews_df["nb_chars"]))
-print(np.std(reviews_df['nb_chars']))
-
-## Mean Words
-print(np.mean(reviews_df["nb_words"]))
-print(np.std(reviews_df['nb_words']))
 
 
 
@@ -148,7 +106,6 @@ print(np.std(reviews_df['nb_words']))
 import gmaps 
 import gmaps.datasets 
 
-hotel_review_df
 
 
 

@@ -65,11 +65,17 @@ full_hotel_review_df.to_parquet("data/full_hotel_review_df.parquet", compression
 sample_reviews_df = full_hotel_review_df[['bad_review_dummy',
                                           'review_rating']]
 
+slim_nlp_review_df = nlp_review_df[['review',
+                                    'review_clean',
+                                    'compound',
+                                    'nb_words',
+                                    'pos',
+                                    'neg']]
 
-sample_reviews_df = sample_reviews_df.join(nlp_review_df)
+sample_reviews_df = sample_reviews_df.join(slim_nlp_review_df)
 
-bad_reviews = hotel_review_df[hotel_review_df["bad_review_dummy"]==1].iloc[0:5000,:]
-good_reviews = hotel_review_df[hotel_review_df["bad_review_dummy"]==0].iloc[0:5000,:]
+bad_reviews = sample_reviews_df[sample_reviews_df["bad_review_dummy"]==1].iloc[0:5000,:]
+good_reviews = sample_reviews_df[sample_reviews_df["bad_review_dummy"]==0].iloc[0:5000,:]
 
 sample_frames = [bad_reviews, good_reviews]
 sample_reviews_df = pd.concat(sample_frames)
@@ -107,30 +113,25 @@ sample_reviews_df[sample_reviews_df["nb_words"] >= 5].sort_values("neg", ascendi
 ##############################################################################
 # Density Plot of Reviews
 ##############################################################################
+sns.set_theme(style="whitegrid", palette="pastel")
 
 for x in [0, 1]:
     subset = sample_reviews_df[sample_reviews_df['bad_review_dummy'] == x]
     
     # Draw Density Plot
     if x == 0:
-        label = "Positive Reviews"
+        lab = "Positive Reviews"
     else:
-        label = "Negative Reviews"
-    sns.distplot(subset['compound'], hist = False, label = label)
+        lab = "Negative Reviews"
+        
+    sns.distplot(subset['compound'], hist = False, label = lab)
 
 # Lables
 plt.title('Density Plot of Review Sentiment')
 plt.xlabel('Sentiment Score')
-plt.ylabel('Frequency')
+plt.ylabel('Density')
+plt.legend()
 plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/figures/density_plot_reviews.png')
-
-
-
-
-
-
-
-
 
 
 
