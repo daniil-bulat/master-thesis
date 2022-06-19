@@ -44,10 +44,12 @@ len(df_new_hotel_reviews['review_text']) # number of reviews
 len(df_new_hotel_reviews['hotel_name'].unique()) # number of hotels
 
 print(np.mean(df_new_hotel_reviews['average_rating']))
+print(np.std(df_new_hotel_reviews['average_rating']))
 print(np.min(df_new_hotel_reviews['average_rating']))
 print(np.max(df_new_hotel_reviews['average_rating']))
 
 print(np.mean(df_new_hotel_reviews['review_rating']))
+print(np.std(df_new_hotel_reviews['review_rating']))
 print(np.min(df_new_hotel_reviews['review_rating']))
 print(np.max(df_new_hotel_reviews['review_rating']))
 

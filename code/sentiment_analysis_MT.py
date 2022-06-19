@@ -39,13 +39,12 @@ import_adj_vader() # Vader Lexicon
 nlp_review_df = sentiment_analysis_for_reviews(hotel_review_df, clean_text)
 
 
-
 # Save NLP as parquet
 nlp_review_df.to_parquet("data/full_nlp_review_df.parquet", compression=None)
 
 
 # Add some additional Variables to the initial data set
-full_hotel_review_df = add_descriptive_variables(hotel_review_df, 3.5, 1.0, 2.0)
+full_hotel_review_df = add_descriptive_variables(hotel_review_df, 3.5, 1.5, 1.0, 2.5)
 
 
 # Save Hotel Information as parquet

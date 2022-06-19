@@ -15,16 +15,11 @@ from selenium import webdriver
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
-import json
 import numpy as np
-import csv
-import re
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException
-from selenium.webdriver.common.keys import Keys
 
 
 ##############################################################################
@@ -33,7 +28,7 @@ from functions_tripadvisor_scraping import headers_for_bs, hotel_info_function
 ##############################################################################
 
 # Directory
-os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/data')
+os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis')
 
 
 
@@ -80,8 +75,9 @@ for i in range(0,30):
 tripadvisor_link_list = pd.DataFrame(hotel_link_list)
 tripadvisor_link_list = tripadvisor_link_list.reset_index()
 
-# Save DF
+# Save to CSV
 tripadvisor_link_list.to_csv("tripadvisor_link_list_2.csv",index=False)
+
 
 # Convert back to list for further use
 hotel_link_list = tripadvisor_link_list.iloc[:,0].tolist()
@@ -122,7 +118,7 @@ for i in hotel_link_list:
 hotel_links_more_df = pd.DataFrame(hotel_links_more)
 hotel_links_more_df = hotel_links_more_df.reset_index()
 
-# Save DF
+# Save to CSV
 hotel_links_more_df.to_csv("tripadvisor_long_link_list.csv",index=False)
 
 # Sort desending
@@ -133,22 +129,22 @@ hotel_links_more_df = hotel_links_more_df.sort_values(['index'], ascending=[Fals
 
 
 
-
-
 ###############################################################################
 # Review Scraper
 ###############################################################################
+#hotel_links_more_df = pd.read_csv("data/tripadvisor_long_link_list.csv")
+
 
 headers = headers_for_bs()
 
-hotel_id, review_title, review_text, review_rating, hotel_name, num_reviews, average_rating, excellent, very_good, average, poor, terrible, tripadv_ranking = hotel_info_function(hotel_links_more_df,requests,headers,BeautifulSoup)
+hotel_id, review_title, review_text, review_rating, review_date, hotel_name, num_reviews, average_rating, excellent, very_good, average, poor, terrible, tripadv_ranking = hotel_info_function(hotel_links_more_df.iloc[500:,:],requests,headers,BeautifulSoup)
 
 
 
 
 # convert lists to data frame
-df_new_hotel_reviews = pd.DataFrame(list(zip(hotel_id, review_title, review_text, review_rating, hotel_name, num_reviews, average_rating, excellent, very_good, average, poor, terrible, tripadv_ranking)),
-               columns =['hotel_id', 'review_title', 'review_text', 'review_rating', 'hotel_name', 'num_reviews', 'average_rating', 'excellent', 'very_good', 'average', 'poor', 'terrible', 'tripadv_ranking'])
+df_new_hotel_reviews = pd.DataFrame(list(zip(hotel_id, review_title, review_text, review_rating, review_date, hotel_name, num_reviews, average_rating, excellent, very_good, average, poor, terrible, tripadv_ranking)),
+               columns =['hotel_id', 'review_title', 'review_text', 'review_rating', 'review_date','hotel_name', 'num_reviews', 'average_rating', 'excellent', 'very_good', 'average', 'poor', 'terrible', 'tripadv_ranking'])
 
 
 df_new_hotel_reviews = df_new_hotel_reviews[df_new_hotel_reviews['average_rating']<5.1]
@@ -167,19 +163,29 @@ def add_ranking(df):
     
     df['tripadv_ranking'] = rankings
     return df
+
+
+def adjust_review_date(df):
+    month = []
+    year = []
+    for j in df['review_date']:
+        sep = ' '
+        month.append(j.split(sep, 5)[3])
+        year.append(int(j.split(sep, 5)[4]))
+    
+    df['review_month'] = month
+    df['review_year'] = year
+    return df
+    
         
         
 df_new_hotel_reviews = add_ranking(df_new_hotel_reviews)
 
-
+df_new_hotel_reviews = adjust_review_date(df_new_hotel_reviews)
 
 
 # Save DF to csv
-df_new_hotel_reviews.to_csv('UK_hotel_reviews.csv',encoding="utf-8")
-
-
-
-
+df_new_hotel_reviews.to_csv('UK_hotel_reviews_date_1.csv',encoding="utf-8")
 
 
 

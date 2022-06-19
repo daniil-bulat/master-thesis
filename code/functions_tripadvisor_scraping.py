@@ -9,6 +9,8 @@
 ##############################################################################
 ##############################################################################
 
+import re
+import numpy as np
 
 
 
@@ -32,6 +34,7 @@ def hotel_info_function(hotel_links,requests,headers,BeautifulSoup):
     review_title = []
     review_text = []
     review_rating = []
+    review_date = []
     hotel_id = []
     hotel_name = []
     num_reviews = []
@@ -50,7 +53,7 @@ def hotel_info_function(hotel_links,requests,headers,BeautifulSoup):
 
     
         try: 
-            resp = requests.get(url, headers = headers) 
+            resp = requests.get(url, headers = headers)
             soup = BeautifulSoup(resp.content, "html.parser")
         
         
@@ -92,6 +95,7 @@ def hotel_info_function(hotel_links,requests,headers,BeautifulSoup):
             for i in range(0,len(review_containers)):
                 review_title.append(review_containers[i].find('div', class_="fpMxB MC _S b S6 H5 _a").text)
                 review_text.append(review_containers[i].find('div', class_="pIRBV").text)
+                review_date.append(review_containers[i].find('span', class_="euPKI _R Me S4 H3").text)
                 
                 
                 input_tag = review_containers[i].find('div', class_="emWez F1")
@@ -119,7 +123,7 @@ def hotel_info_function(hotel_links,requests,headers,BeautifulSoup):
         except:
             print("no such url")
     
-    return hotel_id, review_title, review_text, review_rating, hotel_name, num_reviews, average_rating, excellent, very_good, average, poor, terrible, tripadv_ranking
+    return hotel_id, review_title, review_text, review_rating, review_date, hotel_name, num_reviews, average_rating, excellent, very_good, average, poor, terrible, tripadv_ranking
     
 
 

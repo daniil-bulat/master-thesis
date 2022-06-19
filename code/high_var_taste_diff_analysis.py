@@ -53,9 +53,8 @@ full_hotel_review_df = pd.read_parquet("data/full_hotel_review_df.parquet", engi
 ##############################################################################
 
 # select only relevant columns
-sample_reviews_df = full_hotel_review_df[(full_hotel_review_df['many_reviews_dummy']==1) & (full_hotel_review_df['high_var_dummy']==1)]
+sample_reviews_df = full_hotel_review_df[full_hotel_review_df['dist_to_mu'] > 1]
 sample_reviews_df = sample_reviews_df[['taste_diff_dummy']]
-
 
 
 slim_nlp_review_df = nlp_review_df.drop(['review_title','review_text','review', 'review_clean'], 1)
@@ -66,15 +65,15 @@ sample_reviews_df = sample_reviews_df.join(slim_nlp_review_df)
 
 
 
-bad_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==1].iloc[0:5000,:]
-good_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==0].iloc[0:5000,:]
+taste_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==1].iloc[0:5000,:]
+non_taste_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==0].iloc[0:5000,:]
 
-sample_frames = [bad_reviews, good_reviews]
+sample_frames = [taste_reviews, non_taste_reviews]
 sample_reviews_df = pd.concat(sample_frames)
 
 
 # free up memory from unneccessary variables / df's
-del(bad_reviews, good_reviews, sample_frames)
+del(sample_frames, taste_reviews, non_taste_reviews)
 gc.collect()
 
 
@@ -163,7 +162,7 @@ rf.fit(X_train, y_train)
 # predictive power
 y_preds = rf.predict(X_test)
 print(rf.score(X_train, y_train))  # 1 (overfitting)
-print(rf.score(X_test, y_test)) # 0.9189378057302585
+print(rf.score(X_test, y_test)) # 0.77
 
 # Confusion Matrix
 print(metrics.confusion_matrix(y_test, y_preds))
@@ -281,8 +280,8 @@ rf_random.best_params_
 
 # Reevaluate Model
 y_preds = rf_random.predict(X_test)
-print(rf_random.score(X_train, y_train))  #1.0
-print(rf_random.score(X_test, y_test))   #0.8773333333333333
+print(rf_random.score(X_train, y_train))  #
+print(rf_random.score(X_test, y_test))   #
 
 # Confusion Matrix
 print(metrics.confusion_matrix(y_test, y_preds))
@@ -299,8 +298,8 @@ base_accuracy = rf.score(X_test, y_test)
 
 
 # Random Grid Model
-print('Train Accuracy = {:0.2f}%.'.format(rf_random.score(X_train, y_train)*100)) #1.0
-print('Test Accuracy = {:0.2f}%.'.format(rf_random.score(X_test, y_test)*100))   #0.8773333333333333
+print('Train Accuracy = {:0.2f}%.'.format(rf_random.score(X_train, y_train)*100)) #
+print('Test Accuracy = {:0.2f}%.'.format(rf_random.score(X_test, y_test)*100))   #
 random_accuracy = rf_random.score(X_test, y_test)
 
 # Improvement
@@ -339,8 +338,8 @@ grid_search.best_params_
 
 ## Reevaluate Results
 # Random Grid Model
-print('Train Accuracy = {:0.2f}%.'.format(rf_random.score(X_train, y_train)*100)) #1.0
-print('Test Accuracy = {:0.2f}%.'.format(rf_random.score(X_test, y_test)*100))   #0.8773333333333333
+print('Train Accuracy = {:0.2f}%.'.format(rf_random.score(X_train, y_train)*100)) #
+print('Test Accuracy = {:0.2f}%.'.format(rf_random.score(X_test, y_test)*100))   #
 random_accuracy = rf_random.score(X_test, y_test)
 
 # non_random Grid Search Model
@@ -359,7 +358,7 @@ print('Improvement of {:0.2f}%.'.format( 100 * (grid_search_accuracy - random_ac
 ##############################################################################
 
 param_grid = { 
-  'C': [0.1, 1, 10, 100, 500], 
+  'C': [0.1, 1, 10, 100, 500,1000], 
   'gamma': [1, 0.1, 0.01, 0.001, 0.0001]
 }
 
@@ -378,7 +377,7 @@ param_grid = {
   'kernel': ['rbf']}
 
 
-other_grid = GridSearchCV(SVC(), param_grid, refit=True, verbose=3)
+other_grid = GridSearchCV(SVC(probability=True), param_grid, refit=True, verbose=3)
 other_grid.fit(X_train,y_train)
 
 
@@ -390,8 +389,8 @@ print('Test Accuracy = {:0.2f}%.'.format(grid_search.score(X_test, y_test)*100))
 grid_search_accuracy = grid_search.score(X_test, y_test)
 
 # other Grid Search Model
-print('Train Accuracy = {:0.2f}%.'.format(other_grid.score(X_train, y_train)*100)) # 0.9591
-print('Test Accuracy = {:0.2f}%.'.format(other_grid.score(X_test, y_test)*100))   #0.8883
+print('Train Accuracy = {:0.2f}%.'.format(other_grid.score(X_train, y_train)*100)) # 0.9844
+print('Test Accuracy = {:0.2f}%.'.format(other_grid.score(X_test, y_test)*100))   #0.7647
 other_grid_search_accuracy = other_grid.score(X_test, y_test)
 
 # Improvement
@@ -402,21 +401,24 @@ print('Improvement of {:0.2f}%.'.format( 100 * (other_grid_search_accuracy - gri
 
 
 ##############################################################################
-# Result DF
+# Result of The Final Train Test RF
 ##############################################################################
 
 
 # Predicted Values
-y_preds = other_grid.predict(X_test)
+y_preds = other_grid.predict(X_test) # n=1188 train=831, test=357
 
 # Confusion Matrix
 print(metrics.confusion_matrix(y_test, y_preds))
-#[[1267  206]
-#[ 145 1382]]
+#[[ 90  37]
+#[ 47 183]]
+
 
 # show feature importance
-feature_importances_df = pd.DataFrame({"feature": features, "importance": other_grid.feature_importances_}).sort_values("importance", ascending = False)
+feature_importances_df = pd.DataFrame({"feature": features, "importance": other_grid.best_estimator_.feature_importances_}).sort_values("importance", ascending = False)
 feature_importances_df.head(10)
+
+
 
 
 # ROC Curve
@@ -428,74 +430,43 @@ pr_curve_custom(y_test, y_preds, 'taste_SVM_PR_curve.png', figure_dir)
 
 
 
+##############################################################################
+# Result of Prediction on Full Set
+##############################################################################
 
-# Results
+x_samp = slim_nlp_review_df.sample(frac=0.2)
 
-
-# select only relevant columns
-sample_reviews_df = full_hotel_review_df[(full_hotel_review_df['many_reviews_dummy']==1) & (full_hotel_review_df['high_var_dummy']==1)]
-sample_reviews_df = sample_reviews_df[['taste_diff_dummy']]
-
-
-
-slim_nlp_review_df = nlp_review_df.drop(['review_title','review_text','review', 'review_clean'], 1)
+data_full = x_samp.join(full_hotel_review_df)
 
 
-# join with nlp df
-sample_reviews_df = sample_reviews_df.join(slim_nlp_review_df)
-
-
-
-
-# other Grid Search Model
-print('Test Accuracy = {:0.2f}%.'.format(other_grid.score(x_full, y_full)*100))
-other_grid_search_accuracy = other_grid.score(X_test, y_test)
-
-
-
-
-
-
-####
-y_data = full_hotel_review_df[['taste_diff_dummy']]
-x_data = slim_nlp_review_df
-
-full_data = y_data.join(x_data)
-full_data = full_data.sample(frac=0.2)
-
-x_full = full_data.drop(['taste_diff_dummy'], 1)
 
 # If the algorithm works, we now predict the whole data set,
 # and look if it found sound bad taste reviews in low var hotels
 
-full_y_preds = other_grid.predict(x_full)
+full_y_preds = other_grid.predict(x_samp)
+
+full_y_preds_proba = other_grid.predict_proba(x_samp)
 
 
 
 
 # Predicted Results
-full_data['y_predicted'] = full_y_preds
+data_full['y_predicted'] = full_y_preds
 
-low_num_reviews = full_data[full_data['many_reviews_dummy']==0]
-low_var_reviews = full_data[full_data['high_var_dummy']==0]
-
+data_full['y_probability'] = full_y_preds_proba[:,1]
 
 
+low_num_reviews = data_full[(data_full['many_reviews_dummy']==0) & (data_full['y_predicted']==1)]
 
-
-
+low_var_result_reviews = low_num_reviews[['y_predicted', 'y_probability', 'hotel_name','average_rating','review_rating','review','dist_to_mu','var','mu']]
 
 
 
+low_var_result_reviews.to_csv("low_var_results.csv")
 
 
 
-
-
-
-
-
-
+low_num_reviews.columns
 
 
 
