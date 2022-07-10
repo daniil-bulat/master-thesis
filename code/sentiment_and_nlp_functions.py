@@ -47,7 +47,6 @@ def clean_text(text):
 
 
 
-
 def sentiment_analysis_for_reviews(df, clean_text):
 
     # select only relevant columns
@@ -132,9 +131,9 @@ def show_wordcloud(data, title = None):
 
 
 
-def add_descriptive_variables(df, upper_bad_review_threshold, high_var_threshold, distance_threshold_lower, distance_threshold_upper):
+def add_descriptive_variables(df, upper_bad_review_threshold, high_var_threshold, distance_threshold_lower, distance_threshold_upper, bad_month_threshold):
 
-    df = df.drop(['Unnamed: 0', 'review_title'],1)
+    df = df.drop(['review_title'],1)
     
     # Add Bad Review Dummy
     df["bad_review_dummy"] = df["review_rating"].apply(lambda x: 1 if x < upper_bad_review_threshold else 0)
@@ -161,7 +160,7 @@ def add_descriptive_variables(df, upper_bad_review_threshold, high_var_threshold
     df['many_reviews_dummy'] = df['num_reviews'].apply(lambda x: 1 if x > np.mean(df['num_reviews']) else 0)
     df['high_var_dummy'] = df['var'].apply(lambda x: 1 if  x > high_var_threshold else 0)
     df['dist_to_mu'] = 0
-    df.loc[(df['high_var_dummy'] == 1) & (df['many_reviews_dummy'] == 1), 'dist_to_mu'] = abs(df['average_rating'] - df['review_rating'])
+    df.loc[(df['high_var_dummy'] == 1) & (df['many_reviews_dummy'] == 1), 'dist_to_mu'] = (df['average_rating'] - df['review_rating'])
     
     # If the variance in review ratings and the number of reviews is high, then we
     # assume that a part of the variance can be explained by taste differences in customers.
@@ -170,19 +169,60 @@ def add_descriptive_variables(df, upper_bad_review_threshold, high_var_threshold
     # and 0 otherwise.
     
     df['taste_diff_dummy'] = df['dist_to_mu'].apply(lambda x: 1 if distance_threshold_lower < x < distance_threshold_upper  else 0)
+    
+    # bad month dummy
+    av_rating_group = df.groupby(['hotel_name'])['average_rating'].mean()
+    av_rating_group = av_rating_group.reset_index() # df
 
-    return df 
+
+    bad_month_group = df.groupby(['hotel_name', 'review_date'])['review_rating'].mean()
+    bad_month_group = bad_month_group.reset_index() #df
+
+    bad_month = pd.merge(bad_month_group, av_rating_group, on='hotel_name', how='left')
+
+    bad_months = bad_month[ (bad_month['average_rating'] - bad_month['review_rating']) > bad_month_threshold]
+    bad_months['bad_month_dummy'] = 1
+
+
+    merged_df = df.merge(bad_months, on=["hotel_name","review_date"], how='left')
+    merged_df['bad_month_dummy'] = merged_df['bad_month_dummy'].fillna(0)
+    df = merged_df.drop(['review_rating_y', 'average_rating_y'], 1)
+    
+    df.rename(columns = {'hotel_id': 'hotel_id',
+                         'review_text': 'review_text',
+                         'review_rating_x': 'review_rating',
+                         'review_date': 'review_date',
+                         'hotel_name': 'hotel_name',
+                         'num_reviews': 'num_reviews',
+                         'average_rating_x': 'average_rating',
+                         'excellent': 'excellent',
+                         'very_good': 'very_good',
+                         'average': 'average',
+                         'poor': 'poor',
+                         'terrible': 'terrible',
+                         'tripadv_ranking': 'tripadv_ranking',
+                         'bad_review_dummy': 'bad_review_dummy',
+                         'mu': 'mu',
+                         'var': 'var',
+                         'many_reviews_dummy': 'many_reviews_dummy',
+                         'high_var_dummy': 'high_var_dummy',
+                         'dist_to_mu': 'dist_to_mu',
+                         'taste_diff_dummy': 'taste_diff_dummy',
+                         'bad_month_dummy': 'bad_month_dummy'}, inplace=True)
+
+    
+    return df, distribution_list
 
 
 
 
-def parameterization_rf_tatse_pred(info_df, nlp_df, bad_review_threshold, variance_threshold, dtm_lower, dtm_upper):
+def parameterization_rf_tatse_pred(info_df, nlp_df, bad_review_threshold, variance_threshold, dtm_lower, dtm_upper, bad_month_threshold):
     
     # Add some additional Variables to the initial data set
-    full_hotel_review_df = add_descriptive_variables(info_df, bad_review_threshold, variance_threshold, dtm_lower, dtm_upper)
+    full_hotel_review_df = add_descriptive_variables(info_df, bad_review_threshold, variance_threshold, dtm_lower, dtm_upper, bad_month_threshold)
   
     # select only relevant columns
-    sample_reviews_df = full_hotel_review_df[full_hotel_review_df['dist_to_mu'] > 1]
+    sample_reviews_df = full_hotel_review_df[(full_hotel_review_df['dist_to_mu'] >0) & (full_hotel_review_df['bad_month_dummy'] == 0)]
     sample_reviews_df = sample_reviews_df[['taste_diff_dummy']]
   
     slim_nlp_review_df = nlp_df.drop(['review_title','review_text','review', 'review_clean'], 1)
@@ -192,9 +232,9 @@ def parameterization_rf_tatse_pred(info_df, nlp_df, bad_review_threshold, varian
     sample_reviews_df = sample_reviews_df.join(slim_nlp_review_df)
   
     
-    taste_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==1].iloc[0:5000,:]
+    taste_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==1].iloc[0:400,:]
     print(str(len(taste_reviews)) + " Taste Reviews")
-    non_taste_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==0].iloc[0:5000,:]
+    non_taste_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==0].iloc[0:500,:]
     print(str(len(non_taste_reviews)) + " Non-Taste Reviews")
   
     sample_frames = [taste_reviews, non_taste_reviews]
@@ -224,6 +264,9 @@ def parameterization_rf_tatse_pred(info_df, nlp_df, bad_review_threshold, varian
   
     other_grid = GridSearchCV(SVC(probability=True), param_grid, refit=True, verbose=3)
     other_grid.fit(X_train,y_train)
+    
+    print('Train Accuracy = {:0.2f}%.'.format(other_grid.score(X_train, y_train)*100))
+    print('Test Accuracy = {:0.2f}%.'.format(other_grid.score(X_test, y_test)*100))
   
     ##############################################################################
     # Result of Prediction on Full Set

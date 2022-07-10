@@ -15,6 +15,7 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
 
 
 
@@ -32,7 +33,7 @@ from vader_lexicon import import_adj_vader
 ##############################################################################
 
 os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis')
-hotel_review_df = pd.read_csv('data/UK_hotel_reviews.csv')
+hotel_review_df = pd.read_parquet('data/UK_hotel_reviews.parquet')
 
 ## NLP
 import_adj_vader() # Vader Lexicon
@@ -44,7 +45,7 @@ nlp_review_df.to_parquet("data/full_nlp_review_df.parquet", compression=None)
 
 
 # Add some additional Variables to the initial data set
-full_hotel_review_df = add_descriptive_variables(hotel_review_df, 3.5, 1.5, 1.0, 2.5)
+full_hotel_review_df = add_descriptive_variables(hotel_review_df, 3.5, 1.5, 1.0, 2.5, 2.9)
 
 
 # Save Hotel Information as parquet
@@ -58,7 +59,7 @@ full_hotel_review_df.to_parquet("data/full_hotel_review_df.parquet", compression
 ##############################################################################
 
 # select only relevant columns
-sample_reviews_df = full_hotel_review_df[['bad_review_dummy',
+sample_reviews_df = full_hotel_review_df[['taste_diff_dummy',
                                           'review_rating']]
 
 slim_nlp_review_df = nlp_review_df[['review',
@@ -70,8 +71,8 @@ slim_nlp_review_df = nlp_review_df[['review',
 
 sample_reviews_df = sample_reviews_df.join(slim_nlp_review_df)
 
-bad_reviews = sample_reviews_df[sample_reviews_df["bad_review_dummy"]==1].iloc[0:5000,:]
-good_reviews = sample_reviews_df[sample_reviews_df["bad_review_dummy"]==0].iloc[0:5000,:]
+bad_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==1].iloc[0:300,:]
+good_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==0].iloc[0:500,:]
 
 sample_frames = [bad_reviews, good_reviews]
 sample_reviews_df = pd.concat(sample_frames)

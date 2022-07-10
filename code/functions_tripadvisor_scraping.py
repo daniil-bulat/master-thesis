@@ -50,8 +50,7 @@ def hotel_info_function(hotel_links,requests,headers,BeautifulSoup):
 
         url = hotel_links.iloc[h,1]
         
-
-    
+   
         try: 
             resp = requests.get(url, headers = headers)
             soup = BeautifulSoup(resp.content, "html.parser")
@@ -59,25 +58,25 @@ def hotel_info_function(hotel_links,requests,headers,BeautifulSoup):
         
             hi = hotel_links.iloc[h,0]
             try: 
-                hn = soup.find('h1', class_='fkWsC b d Pn').text
+                hn = soup.find('h1', class_='QdLfr b d Pn').text
             except:
                 hn = "No Hotel Name Available"
-                    
+ 
+               
             
             try: 
-                trp_rank = soup.find('div', class_="daXUZ").text
+                trp_rank = soup.find('div', class_="cGAqf").text
             except:
                 trp_rank = np.nan
             
             try:
-                nr = soup.find('span', class_="HFUqL").text
+                nr = soup.find('span', class_="qqniT").text
                 nr = int(re.sub("[^0-9]", "", nr))
-                
             except:
                 nr = np.nan
             
             try: 
-                av_rat = float(soup.find('span', class_="bvcwU P").text)
+                av_rat = float(soup.find('span', class_="IHSLZ P").text)
 
             except:
                 av_rat = np.nan
@@ -90,18 +89,37 @@ def hotel_info_function(hotel_links,requests,headers,BeautifulSoup):
             ter = int(re.sub("[^0-9]", "", soup.find("input", {"id": "ReviewRatingFilter_1"}).text))
             
             # most recent reviews
-            review_containers = soup.find_all('div', class_='cqoFv _T')
-        
-            for i in range(0,len(review_containers)):
-                review_title.append(review_containers[i].find('div', class_="fpMxB MC _S b S6 H5 _a").text)
-                review_text.append(review_containers[i].find('div', class_="pIRBV").text)
-                review_date.append(review_containers[i].find('span', class_="euPKI _R Me S4 H3").text)
-                
-                
-                input_tag = review_containers[i].find('div', class_="emWez F1")
-                tagtag = input_tag.find('span')
+            review_containers = soup.find_all('div', class_='YibKl MC R2 Gi z Z BB pBbQr')
+            
 
-                review_rating.append(int(re.sub("[^0-9]", "", tagtag['class'][1])) /10 )
+            
+
+
+            for i in range(0,len(review_containers)):
+                try:
+                    datee = review_containers[i].find('span', class_="teHYY _R Me S4 H3").text
+                    review_date.append(datee)
+                except AttributeError:
+                    review_date.append(np.nan)
+                    
+                try: 
+                    titlee = review_containers[i].find('div', class_="KgQgP MC _S b S6 H5 _a").text
+                    review_title.append(titlee)
+                except:
+                    review_title.append(np.nan)
+                    
+                try: 
+                    textee = review_containers[i].find('q', class_="QewHA H4 _a").text
+                    review_text.append(textee)
+                except:
+                    review_text.append(np.nan)
+                
+                
+                try: 
+                    input_tag = review_containers[i].find('div', class_="Hlmiy F1").find('span')
+                    review_rating.append(int(re.sub("[^0-9]", "", input_tag['class'][1])) /10 )
+                except:
+                    review_rating.append(np.nan)
                 
                 hotel_id.append(hi)
                 hotel_name.append(hn)
@@ -125,5 +143,12 @@ def hotel_info_function(hotel_links,requests,headers,BeautifulSoup):
     
     return hotel_id, review_title, review_text, review_rating, review_date, hotel_name, num_reviews, average_rating, excellent, very_good, average, poor, terrible, tripadv_ranking
     
+
+
+
+
+
+
+
 
 

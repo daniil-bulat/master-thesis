@@ -20,8 +20,9 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
+import pyarrow.parquet as pq
 
-
+os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/code')
 ##############################################################################
 # Import own Functions
 from functions_tripadvisor_scraping import headers_for_bs, hotel_info_function
@@ -124,11 +125,7 @@ hotel_links_more_df.to_csv("tripadvisor_long_link_list.csv",index=False)
 # Sort desending
 hotel_links_more_df = hotel_links_more_df.sort_values(['index'], ascending=[False])
 
-
-
-
-
-
+#hotel_links_more_df = pd.read_csv("data/tripadvisor_long_link_list.csv")
 ###############################################################################
 # Review Scraper
 ###############################################################################
@@ -137,7 +134,7 @@ hotel_links_more_df = hotel_links_more_df.sort_values(['index'], ascending=[Fals
 
 headers = headers_for_bs()
 
-hotel_id, review_title, review_text, review_rating, review_date, hotel_name, num_reviews, average_rating, excellent, very_good, average, poor, terrible, tripadv_ranking = hotel_info_function(hotel_links_more_df.iloc[500:,:],requests,headers,BeautifulSoup)
+hotel_id, review_title, review_text, review_rating, review_date, hotel_name, num_reviews, average_rating, excellent, very_good, average, poor, terrible, tripadv_ranking = hotel_info_function(hotel_links_more_df,requests,headers,BeautifulSoup)
 
 
 
@@ -154,46 +151,35 @@ df_new_hotel_reviews = df_new_hotel_reviews.reset_index(drop=True)
 
 def add_ranking(df):
     rankings = []
+    df['tripadv_ranking'] = df['tripadv_ranking'].fillna(0)
     for j in df['tripadv_ranking']:
-        sep = ' '
-        rank = j.split(sep, 1)[0].replace('#', '')
-        rank = int(rank.replace(',', ''))
-        rank_of = int(j.split(sep, 3)[2].replace(',', ''))
-        rankings.append(rank / rank_of)
+        if j==0:
+            rankings.append(np.nan)
+        else:
+            sep = ' '
+            rank = j.split(sep, 1)[0].replace('#', '')
+            rank = int(rank.replace(',', ''))
+            rank_of = int(j.split(sep, 3)[2].replace(',', ''))
+            rankings.append(rank / rank_of)
     
     df['tripadv_ranking'] = rankings
     return df
 
 
-def adjust_review_date(df):
-    month = []
-    year = []
-    for j in df['review_date']:
-        sep = ' '
-        month.append(j.split(sep, 5)[3])
-        year.append(int(j.split(sep, 5)[4]))
-    
-    df['review_month'] = month
-    df['review_year'] = year
-    return df
     
         
         
 df_new_hotel_reviews = add_ranking(df_new_hotel_reviews)
 
-df_new_hotel_reviews = adjust_review_date(df_new_hotel_reviews)
+# Adjust date column
+df_new_hotel_reviews['review_date'] = df_new_hotel_reviews['review_date'].str.replace('Date of stay:', '')
 
 
 # Save DF to csv
-df_new_hotel_reviews.to_csv('UK_hotel_reviews_date_1.csv',encoding="utf-8")
+df_new_hotel_reviews.to_csv('data/UK_hotel_reviews.csv',encoding="utf-8")
 
-
-
-
-
-
-
-
+# Save as Parquet
+df_new_hotel_reviews.to_parquet("data/UK_hotel_reviews.parquet", compression=None)
 
 
 

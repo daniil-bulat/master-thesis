@@ -20,7 +20,6 @@ figure_dir = '/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/
 # Data
 os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis')
 df_new_hotel_reviews = pd.read_csv('data/UK_hotel_reviews.csv')
-df_new_hotel_reviews.columns
 
 df_new_hotel_reviews = df_new_hotel_reviews.drop(['hotel_id',
                                                   'review_title',

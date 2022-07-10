@@ -53,7 +53,7 @@ full_hotel_review_df = pd.read_parquet("data/full_hotel_review_df.parquet", engi
 ##############################################################################
 
 # select only relevant columns
-sample_reviews_df = full_hotel_review_df[full_hotel_review_df['dist_to_mu'] > 1]
+sample_reviews_df = full_hotel_review_df[(full_hotel_review_df['dist_to_mu'] > 1) & (full_hotel_review_df['bad_month_dummy'] == 0)]
 sample_reviews_df = sample_reviews_df[['taste_diff_dummy']]
 
 
@@ -231,7 +231,7 @@ print(classification_report(y_test, y_preds))
 # Tuning the Random forest 
 
 # Number of trees in random forest
-n_estimators = np.linspace(100, 500, int((500-50)/50) + 1, dtype=int)
+n_estimators = np.linspace(10, 500, int((500-50)/50) + 1, dtype=int)
 
 # Number of features to consider at every split
 max_features = ['auto', 'sqrt']
@@ -270,11 +270,11 @@ rf_random.fit(X_train, y_train)
 print("done")
 
 rf_random.best_params_
-#{'n_estimators': 500,
-#'min_samples_split': 10,
-#'min_samples_leaf': 1,
+#{'n_estimators': 336,
+#'min_samples_split': 20,
+#'min_samples_leaf': 2,
 #'max_features': 'auto',
-#'max_depth': 100,
+#'max_depth': 1,
 #'criterion': 'entropy',
 #'bootstrap': False}
 
@@ -372,8 +372,8 @@ other_grid.best_params_
 #other_grid.best_params_ = {'C': 5000, 'gamma': 0.0001}
 
 param_grid = { 
-  'C': [5000], 
-  'gamma': [0.0001],
+  'C': [0.1], 
+  'gamma': [1],
   'kernel': ['rbf']}
 
 

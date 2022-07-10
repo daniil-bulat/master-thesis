@@ -202,7 +202,7 @@ dds.to_csv("feature_list_taste.csv")
 
 
 label = "taste_diff_dummy"
-ignore_cols = [label, 'review_clean']
+ignore_cols = [label, 'review_clean', 'review']
 features = [c for c in sample_reviews_df.columns if c not in ignore_cols]
 
 # split the data into train and test
@@ -433,7 +433,7 @@ other_grid.best_params_
 
 param_grid = { 
   'C': [500], 
-  'gamma': [0.001]
+  'gamma': [0.01]
 }
 
 
