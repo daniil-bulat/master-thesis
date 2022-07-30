@@ -133,14 +133,14 @@ def show_wordcloud(data, title = None):
 
 def add_descriptive_variables(df, upper_bad_review_threshold, high_var_threshold, distance_threshold_lower, distance_threshold_upper, bad_month_threshold):
 
-    df = df.drop(['review_title'],1)
+    df = df.drop(columns='review_title')
     
     # Add Bad Review Dummy
     df["bad_review_dummy"] = df["review_rating"].apply(lambda x: 1 if x < upper_bad_review_threshold else 0)
     
     # Add Variance of Reviews Column
     mu = []
-    var = []
+    sd = []
     
     for i in range(0,len(df['review_rating'])):
         distribution_list = []
@@ -151,24 +151,30 @@ def add_descriptive_variables(df, upper_bad_review_threshold, high_var_threshold
         distribution_list.extend([1] * int(df['terrible'].iloc[i]))
         
         mu.append(np.mean(distribution_list))
-        var.append(np.var(distribution_list))
+        sd.append(np.std(distribution_list))
     
     df['mu'] = mu
-    df['var'] = var
+    df['sd'] = sd
+    
+    df['sd_lower'] = df['sd'] * distance_threshold_lower
+    df['sd_upper'] = df['sd'] * distance_threshold_upper
     
     # Add a dummy variable for reviews of high variance hotels
     df['many_reviews_dummy'] = df['num_reviews'].apply(lambda x: 1 if x > np.mean(df['num_reviews']) else 0)
-    df['high_var_dummy'] = df['var'].apply(lambda x: 1 if  x > high_var_threshold else 0)
+    df['high_var_dummy'] = df['sd'].apply(lambda x: 1 if  x > high_var_threshold else 0)
     df['dist_to_mu'] = 0
-    df.loc[(df['high_var_dummy'] == 1) & (df['many_reviews_dummy'] == 1), 'dist_to_mu'] = (df['average_rating'] - df['review_rating'])
+    #df.loc[(df['high_var_dummy'] == 1) & (df['many_reviews_dummy'] == 1), 'dist_to_mu'] = (df['average_rating'] - df['review_rating'])
     
-    # If the variance in review ratings and the number of reviews is high, then we
-    # assume that a part of the variance can be explained by taste differences in customers.
+    df.loc[(df['many_reviews_dummy'] == 1), 'dist_to_mu'] = (df['average_rating'] - df['review_rating'])
+    
+    
+    # If the sd in review ratings and the number of reviews is high, then we
+    # assume that a part of the sd can be explained by taste differences in customers.
     # The rest might be e.g. due to timing.
     # Therefore we add a varibale 'taste_diff_dummy' that is 1 if the variance is larger 1
     # and 0 otherwise.
     
-    df['taste_diff_dummy'] = df['dist_to_mu'].apply(lambda x: 1 if distance_threshold_lower < x < distance_threshold_upper  else 0)
+    df['taste_diff_dummy'] = np.where((df.sd_lower < df.dist_to_mu) & (df.sd_upper > df.dist_to_mu),1,0)
     
     # bad month dummy
     av_rating_group = df.groupby(['hotel_name'])['average_rating'].mean()
@@ -203,15 +209,15 @@ def add_descriptive_variables(df, upper_bad_review_threshold, high_var_threshold
                          'tripadv_ranking': 'tripadv_ranking',
                          'bad_review_dummy': 'bad_review_dummy',
                          'mu': 'mu',
-                         'var': 'var',
+                         'sd': 'sd',
                          'many_reviews_dummy': 'many_reviews_dummy',
                          'high_var_dummy': 'high_var_dummy',
                          'dist_to_mu': 'dist_to_mu',
                          'taste_diff_dummy': 'taste_diff_dummy',
                          'bad_month_dummy': 'bad_month_dummy'}, inplace=True)
-
     
-    return df, distribution_list
+
+    return df  #, distribution_list
 
 
 
@@ -222,19 +228,19 @@ def parameterization_rf_tatse_pred(info_df, nlp_df, bad_review_threshold, varian
     full_hotel_review_df = add_descriptive_variables(info_df, bad_review_threshold, variance_threshold, dtm_lower, dtm_upper, bad_month_threshold)
   
     # select only relevant columns
-    sample_reviews_df = full_hotel_review_df[(full_hotel_review_df['dist_to_mu'] >0) & (full_hotel_review_df['bad_month_dummy'] == 0)]
+    sample_reviews_df = full_hotel_review_df[(full_hotel_review_df['dist_to_mu'] > 0) & (full_hotel_review_df['bad_month_dummy'] == 0)]
     sample_reviews_df = sample_reviews_df[['taste_diff_dummy']]
   
     slim_nlp_review_df = nlp_df.drop(['review_title','review_text','review', 'review_clean'], 1)
-  
-  
+
+
     # join with nlp df
     sample_reviews_df = sample_reviews_df.join(slim_nlp_review_df)
   
     
-    taste_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==1].iloc[0:400,:]
+    taste_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==1].iloc[0:3000,:]
     print(str(len(taste_reviews)) + " Taste Reviews")
-    non_taste_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==0].iloc[0:500,:]
+    non_taste_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==0].iloc[0:3000,:]
     print(str(len(non_taste_reviews)) + " Non-Taste Reviews")
   
     sample_frames = [taste_reviews, non_taste_reviews]
@@ -260,6 +266,7 @@ def parameterization_rf_tatse_pred(info_df, nlp_df, bad_review_threshold, varian
         'C': [5000], 
         'gamma': [0.0001],
         'kernel': ['rbf']}
+
   
   
     other_grid = GridSearchCV(SVC(probability=True), param_grid, refit=True, verbose=3)
@@ -272,7 +279,8 @@ def parameterization_rf_tatse_pred(info_df, nlp_df, bad_review_threshold, varian
     # Result of Prediction on Full Set
     ##############################################################################
   
-    x_samp = slim_nlp_review_df.sample(frac=0.2)
+    #x_samp = slim_nlp_review_df.sample(frac=0.2)
+    x_samp = slim_nlp_review_df
   
     data_full = x_samp.join(full_hotel_review_df)
   
@@ -289,10 +297,10 @@ def parameterization_rf_tatse_pred(info_df, nlp_df, bad_review_threshold, varian
     data_full['y_probability'] = full_y_preds_proba[:,1]
   
     low_num_reviews = data_full[(data_full['many_reviews_dummy']==0) & (data_full['y_predicted']==1)]
-    low_num_review_results = low_num_reviews[['y_predicted', 'y_probability', 'hotel_name','average_rating','review_rating','review_text','dist_to_mu','var','mu']]
+    low_num_review_results = low_num_reviews[['y_predicted', 'y_probability', 'hotel_name','average_rating','review_rating','review_text','dist_to_mu','sd','mu']]
     print("DONE!")
   
-    return low_num_review_results
+    return low_num_review_results, X_train
  
   
   

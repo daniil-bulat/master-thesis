@@ -45,7 +45,7 @@ nlp_review_df.to_parquet("data/full_nlp_review_df.parquet", compression=None)
 
 
 # Add some additional Variables to the initial data set
-full_hotel_review_df = add_descriptive_variables(hotel_review_df, 3.5, 1.5, 1.0, 2.5, 2.9)
+full_hotel_review_df = add_descriptive_variables(hotel_review_df, 3.6, 1.12, 1.037, 2.969, 2.1)
 
 
 # Save Hotel Information as parquet

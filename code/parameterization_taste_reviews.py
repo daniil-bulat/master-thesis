@@ -3,7 +3,8 @@ import pandas as pd
 import os
 import numpy as np
 import seaborn as sns
-
+import scipy
+from scipy.stats import skewnorm
 
 # Directory
 os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/code')
@@ -18,16 +19,52 @@ nlp_review_df = pd.read_parquet("data/full_nlp_review_df.parquet", engine="fastp
 
 
 
+# Set some parameters
+gk = hotel_review_df.groupby('hotel_name')['excellent','very_good','average', 'poor', 'terrible'].mean()
+
+distribution_list = []
+
+for i in range(0,len(gk['excellent'])):
+    distribution_list.extend([5] * int(gk['excellent'].iloc[i]))
+    distribution_list.extend([4] * int(gk['very_good'].iloc[i]))
+    distribution_list.extend([3] * int(gk['average'].iloc[i]))
+    distribution_list.extend([2] * int(gk['poor'].iloc[i]))
+    distribution_list.extend([1] * int(gk['terrible'].iloc[i]))
+    
+mu = np.mean(distribution_list)
+sd = np.std(distribution_list)
+skew = scipy.stats.skew(distribution_list, axis = 0, bias = True)
+num_rev = len(distribution_list)
+
+
+
+# create some random data from a skewnorm
+data = skewnorm.rvs(skew, loc=mu, scale=sd, size=num_rev)
+
+# draw a histogram and kde of the given data
+ax = sns.distplot(data, kde_kws={'label':'kde of given data'}, label='histogram')
+
+# 70%
+sd_mod = sd * 1.037
+scipy.stats.skewnorm.cdf(mu+sd_mod,skew,mu,sd) - scipy.stats.skewnorm.cdf(mu-sd_mod,skew,mu,sd)
+
+# 5%
+upper = 1.969
+lower = 0
+scipy.stats.skewnorm.cdf(upper,skew,mu,sd)
+
+
+
 
 # Set Variables
-bad_review_threshold = 3.5
-variance_threshold = 1.0
-dtm_lower = 1.0
-dtm_upper = 2.0
+bad_review_threshold = 3.6 # or 3.1 [mean is 3.97, 3.5 and lower can be considered bad]
+variance_threshold = sd_mod
+dtm_lower = 1.037
+dtm_upper = 1.969
 bad_month_threshold = 2.1
 
 
-result_df = parameterization_rf_tatse_pred(hotel_review_df,
+result_df, X_train = parameterization_rf_tatse_pred(hotel_review_df,
                                            nlp_review_df,
                                            bad_review_threshold,
                                            variance_threshold,
@@ -49,7 +86,6 @@ np.mean(most_probable['average_rating'] - most_probable['review_rating'])
 np.mean(most_probable['y_probability'])
 
 most_probable.to_csv("test_taste.csv")
-
 
 
 
