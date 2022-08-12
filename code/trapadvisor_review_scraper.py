@@ -25,7 +25,7 @@ import pyarrow.parquet as pq
 os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/code')
 ##############################################################################
 # Import own Functions
-from functions_tripadvisor_scraping import headers_for_bs, hotel_info_function
+from functions_tripadvisor_scraping import headers_for_bs, hotel_info_function, add_ranking
 ##############################################################################
 
 # Directory
@@ -126,6 +126,9 @@ hotel_links_more_df.to_csv("tripadvisor_long_link_list.csv",index=False)
 hotel_links_more_df = hotel_links_more_df.sort_values(['index'], ascending=[False])
 
 #hotel_links_more_df = pd.read_csv("data/tripadvisor_long_link_list.csv")
+
+
+
 ###############################################################################
 # Review Scraper
 ###############################################################################
@@ -148,27 +151,9 @@ df_new_hotel_reviews = df_new_hotel_reviews[df_new_hotel_reviews['average_rating
 df_new_hotel_reviews = df_new_hotel_reviews[df_new_hotel_reviews['review_rating']<5.1]
 df_new_hotel_reviews['poor'] = df_new_hotel_reviews['poor'].apply(pd.to_numeric)
 df_new_hotel_reviews = df_new_hotel_reviews.reset_index(drop=True)
-
-def add_ranking(df):
-    rankings = []
-    df['tripadv_ranking'] = df['tripadv_ranking'].fillna(0)
-    for j in df['tripadv_ranking']:
-        if j==0:
-            rankings.append(np.nan)
-        else:
-            sep = ' '
-            rank = j.split(sep, 1)[0].replace('#', '')
-            rank = int(rank.replace(',', ''))
-            rank_of = int(j.split(sep, 3)[2].replace(',', ''))
-            rankings.append(rank / rank_of)
-    
-    df['tripadv_ranking'] = rankings
-    return df
-
-
     
         
-        
+# add ranking  
 df_new_hotel_reviews = add_ranking(df_new_hotel_reviews)
 
 # Adjust date column

@@ -433,7 +433,7 @@ other_grid.best_params_
 
 param_grid = { 
   'C': [500], 
-  'gamma': [0.01]
+  'gamma': [0.001]
 }
 
 
@@ -494,7 +494,7 @@ data = full_sample_reviews_df.drop(['review_rating',
 
 target = sample_reviews_df['taste_diff_dummy']
 
-X_test = 
+
 y_pred_other_grid = other_grid.predict(X_test)
 
 full_sample_reviews_df.columns
@@ -509,7 +509,6 @@ taste_diff_result_df.to_parquet("data/taste_diff_result_df_TEST.parquet", compre
 
 # Read with parquet
 taste_diff_result_df = pd.read_parquet("data/taste_diff_result_df_TEST.parquet", engine="fastparquet")
-
 
 
 

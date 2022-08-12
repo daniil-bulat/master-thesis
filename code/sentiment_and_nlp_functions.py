@@ -263,8 +263,8 @@ def parameterization_rf_tatse_pred(info_df, nlp_df, bad_review_threshold, varian
   
       # Rado Forest
     param_grid = {
-        'C': [5000], 
-        'gamma': [0.0001],
+        'C': [500], 
+        'gamma': [0.001],
         'kernel': ['rbf']}
 
   
@@ -295,14 +295,16 @@ def parameterization_rf_tatse_pred(info_df, nlp_df, bad_review_threshold, varian
     # Predicted Results
     data_full['y_predicted'] = full_y_preds
     data_full['y_probability'] = full_y_preds_proba[:,1]
+    
+    df_without_train = data_full.drop(X_train.index)
   
-    low_num_reviews = data_full[(data_full['many_reviews_dummy']==0) & (data_full['y_predicted']==1)]
-    low_num_review_results = low_num_reviews[['y_predicted', 'y_probability', 'hotel_name','average_rating','review_rating','review_text','dist_to_mu','sd','mu']]
+    # low_num_reviews = data_full[(data_full['many_reviews_dummy']==0) & (data_full['y_predicted']==1)]
+    # low_num_review_results = low_num_reviews[['y_predicted', 'y_probability', 'hotel_name','average_rating','review_rating','review_text','dist_to_mu','sd','mu']]
+    df_without_train = df_without_train[['y_predicted', 'y_probability', 'hotel_name','average_rating','review_rating','review_text','dist_to_mu','sd','mu']]
     print("DONE!")
   
-    return low_num_review_results, X_train
+    return df_without_train
  
-  
   
 
 

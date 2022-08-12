@@ -146,7 +146,21 @@ def hotel_info_function(hotel_links,requests,headers,BeautifulSoup):
 
 
 
-
+def add_ranking(df):
+    rankings = []
+    df['tripadv_ranking'] = df['tripadv_ranking'].fillna(0)
+    for j in df['tripadv_ranking']:
+        if j==0:
+            rankings.append(np.nan)
+        else:
+            sep = ' '
+            rank = j.split(sep, 1)[0].replace('#', '')
+            rank = int(rank.replace(',', ''))
+            rank_of = int(j.split(sep, 3)[2].replace(',', ''))
+            rankings.append(rank / rank_of)
+    
+    df['tripadv_ranking'] = rankings
+    return df
 
 
 
