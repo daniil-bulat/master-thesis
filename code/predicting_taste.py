@@ -47,9 +47,16 @@ from sklearn import utils
 from sklearn.svm import SVC
 
 
+# Directory
+os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis')
+
+# Data
+hotel_review_df = pd.read_parquet('data/UK_hotel_reviews.parquet')
+nlp_review_df = pd.read_parquet('data/full_nlp_review_df.parquet')
+
 
 # Read CSV
-hotel_review_df = pd.read_csv("data/clean_tripadvisor_review_table.csv")
+#hotel_review_df = pd.read_csv("data/clean_tripadvisor_review_table.csv")
 
 
 
@@ -151,8 +158,12 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import mean_squared_error
 
 
+
+result_df = pd.read_csv("data/result_data_wo_train.csv")
+
+
 data = sample_reviews_df.drop(['taste_diff_dummy','review', 'review_clean'],1)
-target = sample_reviews_df['taste_diff_dummy']
+target = result_df['taste_diff_dummy']
 
 
 pipeline = Pipeline(
@@ -177,7 +188,7 @@ search = GridSearchCV(
 )
 
 
-search.fit(data,target)
+search.fit(nlp_review_df,target)
 search.best_params_ # {'model__n_estimators': 250, 'selector__k': 3339} all features
 search.best_score_ # -0.1327006496
 
