@@ -12,20 +12,27 @@ import pandas as pd
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 # Directory
 os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis')
 
+
+# Figure Directory
+figure_dir = '/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/figures/'
+
+
 # Import Data
-hotel_review_df = pd.read_parquet('data/UK_hotel_reviews.parquet')
-result_df = pd.read_csv('result_final_test_31_08.csv')
+#hotel_review_df = pd.read_parquet('data/UK_hotel_reviews.parquet')
+#result_df = pd.read_csv('result_final_test_31_08.csv')
 
-
+result_df = pd.read_csv('data/result_data_wo_train.csv')
+result_df = result_df.drop_duplicates(subset='review_text', keep="last")
 
 
 # Taste Reviews
-taste_reviews = result_df[result_df['y_predicted']==1]
+taste_reviews = result_df[(result_df['y_predicted']==1) & (result_df['review_rating']<3.1)]
 
 # EDA Taste Reviews
 np.mean(taste_reviews['average_rating'])
@@ -33,6 +40,37 @@ np.std(taste_reviews['average_rating'])
 
 np.mean(taste_reviews['review_rating'])
 np.std(taste_reviews['review_rating'])
+
+len(taste_reviews) / len(result_df['y_predicted'])
+
+
+#groupby
+group_tatse = taste_reviews.groupby('hotel_name').agg(
+    num_reviews=('num_reviews', np.mean),
+    mu=('mu_hotels', np.mean),
+    av_hotel_rat=('average_rating', np.mean),
+    num_taste=('y_predicted', 'count'))
+
+group_tatse['perc_of_taste'] = group_tatse['num_taste'] / group_tatse['num_reviews']
+max(group_tatse['perc_of_taste']) #percentage of tatse-driven reviews per hotel
+
+
+group_tatse['av_hotel_rat'] = group_tatse['av_hotel_rat'].apply(lambda x: 3.0 if (x > 2.8)  & (x < 3) else x)
+av_rating_perc_taste = pd.DataFrame(group_tatse.groupby('av_hotel_rat')['perc_of_taste'].mean())
+av_rating_perc_taste = av_rating_perc_taste.reset_index()
+
+sns.set_theme(style="whitegrid")
+sns.barplot(av_rating_perc_taste['av_hotel_rat'],av_rating_perc_taste['perc_of_taste']*100, color = (0.5529411764705883, 0.6274509803921569, 0.796078431372549))
+
+plt.title('Fraction of Taste-Driven Reviews per Hotel Class')
+plt.xlabel('Average Hotel Rating')
+plt.ylabel('% Taset-Driven Reviews')
+plt.savefig(figure_dir + 'perc_taste_per_cat.png')
+
+
+
+
+
 
 
 # EDA Full Data Set
@@ -113,8 +151,43 @@ plt.xticks(fontsize=7, rotation=90)
 
 
 
+########################################################################
+
+taste_driven = result_df[(result_df['y_predicted']==1) & (result_df['review_rating']<3.1)]
+
+len(taste_driven) / len(result_df['y_predicted'])
+
+np.mean(taste_driven['review_rating'])
+np.std(taste_driven['review_rating'])
+
+np.mean(taste_driven['average_rating'])
+np.std(taste_driven['average_rating'])
+
+#groupby
+group_tatse = taste_driven.groupby('hotel_name').agg(
+    num_reviews=('num_reviews', np.mean),
+    mu=('mu_hotels', np.mean),
+    av_hotel_rat=('average_rating', np.mean),
+    num_taste=('y_predicted', 'count'))
+
+group_tatse['perc_of_taste'] = group_tatse['num_taste'] / group_tatse['num_reviews']
+max(group_tatse['num_taste'] / group_tatse['num_reviews'])
 
 
+########################################################################
 
+
+most_probable = result_df.sort_values('y_probability')
+
+most_probable['review_text'].head(10)
+
+
+# Some Means
+np.mean(most_probable['average_rating'])
+np.mean(most_probable['review_rating'])
+np.mean(most_probable['average_rating'] - most_probable['review_rating'])
+np.mean(most_probable['y_probability'])
+
+most_probable.to_csv("test_taste.csv")
 
 

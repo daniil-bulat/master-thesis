@@ -28,3 +28,7 @@ def skew_normal(mean, std, skew, num_rev, color="red"):
     p = skewnorm.pdf(x,skew,loc=mean, scale=std)
     z = plt.plot(x, p, color, linewidth=2)
     
+
+
+
+

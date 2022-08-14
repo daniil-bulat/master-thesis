@@ -15,7 +15,9 @@ from nltk.corpus import wordnet
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC
-
+import scipy
+from scipy.stats import skew
+import math
 
 sid = SentimentIntensityAnalyzer()
 
@@ -130,51 +132,150 @@ def show_wordcloud(data, title = None):
     
 
 
-
-def add_descriptive_variables(df, upper_bad_review_threshold, high_var_threshold, distance_threshold_lower, distance_threshold_upper, bad_month_threshold):
+def add_descriptive_variables(df, upper_bad_review_threshold, bad_month_threshold):
 
     df = df.drop(columns='review_title')
     
     # Add Bad Review Dummy
     df["bad_review_dummy"] = df["review_rating"].apply(lambda x: 1 if x < upper_bad_review_threshold else 0)
     
-    # Add Variance of Reviews Column
-    mu = []
-    sd = []
+    # Group By Hotel Names
+    gk = df.groupby('hotel_name')['average_rating', 'excellent','very_good','average', 'poor', 'terrible'].mean()
     
-    for i in range(0,len(df['review_rating'])):
+    # Add Average Skewness of ratings to df
+    mu_hotels = []
+    std_hotels = []
+    skew_hotels = []
+
+    for i in range(0, len(gk['excellent'])):
         distribution_list = []
-        distribution_list.extend([5] * int(df['excellent'].iloc[i]))
-        distribution_list.extend([4] * int(df['very_good'].iloc[i]))
-        distribution_list.extend([3] * int(df['average'].iloc[i]))
-        distribution_list.extend([2] * int(df['poor'].iloc[i]))
-        distribution_list.extend([1] * int(df['terrible'].iloc[i]))
+
+        distribution_list.extend([5] * int(gk['excellent'].iloc[i]))
+        distribution_list.extend([4] * int(gk['very_good'].iloc[i]))
+        distribution_list.extend([3] * int(gk['average'].iloc[i]))
+        distribution_list.extend([2] * int(gk['poor'].iloc[i]))
+        distribution_list.extend([1] * int(gk['terrible'].iloc[i]))
         
-        mu.append(np.mean(distribution_list))
-        sd.append(np.std(distribution_list))
+        mu_hotels.append(np.mean(distribution_list))
+        std_hotels.append(np.std(distribution_list))
+        skew_hotels.append(scipy.stats.skew(distribution_list, axis = 0, bias = True))
+
+
+    gk['mu_hotels'] = mu_hotels
+    gk['std_hotels'] = std_hotels
+    gk['skew_hotels'] = skew_hotels
+
+    upper_limit = []
+    for en in range(0,len(gk['mu_hotels'])):
+        z = 0
+        i=1/100
+
+        while round(z,2) != 0.35:
+            mu=gk['mu_hotels'].iloc[en]
+            sd=gk['std_hotels'].iloc[en]
+            skew=gk['skew_hotels'].iloc[en]
+            sd_mod = sd*i
+            z = scipy.stats.skewnorm.cdf(mu,skew,mu,sd) - scipy.stats.skewnorm.cdf(mu-sd_mod,skew,mu,sd)
     
-    df['mu'] = mu
-    df['sd'] = sd
+            if round(z,2) == 0.35:
+                upper_limit.append(mu-sd_mod)
+            elif scipy.stats.skewnorm.cdf(mu,skew,mu,sd) <0.35:
+                upper_limit.append(0)
+                z=0.35
+            elif math.isnan(z) == True:
+                upper_limit.append(0)
+                z=0.35
+            
+            if z<0.35:
+                i=i+(1/100)
+            elif z>0.35:
+                i=i-(1/1000)
+        print(str(en) + " of 807 - " + str(z))
+                
+
+    lower_limit = []
+    for en in range(0,len(gk['mu_hotels'])):
+        z=0
+        i=1/1000
+        mu=gk['mu_hotels'].iloc[en]
+        sd=gk['std_hotels'].iloc[en]
+        skew=gk['skew_hotels'].iloc[en]
+        left_side_mean = scipy.stats.skewnorm.cdf(mu,skew,mu,sd)
+        cur = round(left_side_mean - 0.025,2)
+
+        while (round(z,2) != cur) & (math.isnan(z) == False):
+            sd_mod = sd*i
+            z = scipy.stats.skewnorm.cdf(mu,skew,mu,sd) - scipy.stats.skewnorm.cdf(mu-sd_mod,skew,mu,sd)
     
-    df['sd_lower'] = df['sd'] * distance_threshold_lower
-    df['sd_upper'] = df['sd'] * distance_threshold_upper
+            if round(z,2) == cur:
+                lower_limit.append(mu-sd_mod)
+            elif scipy.stats.skewnorm.cdf(mu,skew,mu,sd) <cur:
+                lower_limit.append(0)
+                z=cur
+            elif math.isnan(z) == True:
+                lower_limit.append(0)
+                z=cur
+            
+            if z<cur:
+                i=i+(1/100)
+            elif z>cur:
+                i=i-(1/1000)
+        print(str(en) + " of 807 - " + str(mu-sd_mod))
+
+
+    gk['upper_limit'] = upper_limit
+    gk['lower_limit'] = lower_limit
     
-    # Add a dummy variable for reviews of high variance hotels
+    gk = gk.reset_index()
+    gk = gk[['hotel_name', 'mu_hotels', 'std_hotels', 'skew_hotels', 'upper_limit','lower_limit']]
+    
+
+    df = pd.merge(df,gk,on='hotel_name',how='left')
+
+    # Add dummy varibales: many reviews and taste-driven
     df['many_reviews_dummy'] = df['num_reviews'].apply(lambda x: 1 if x > np.mean(df['num_reviews']) else 0)
-    df['high_var_dummy'] = df['sd'].apply(lambda x: 1 if  x > high_var_threshold else 0)
-    df['dist_to_mu'] = 0
-    #df.loc[(df['high_var_dummy'] == 1) & (df['many_reviews_dummy'] == 1), 'dist_to_mu'] = (df['average_rating'] - df['review_rating'])
+    df['taste_diff_dummy'] = np.where((df.review_rating < df.upper_limit) & (df.review_rating > df.lower_limit),1,0)
     
-    df.loc[(df['many_reviews_dummy'] == 1), 'dist_to_mu'] = (df['average_rating'] - df['review_rating'])
+
+
     
+    ## Add Variance of Reviews Column
+    #mu = []
+    #sd = []
+    #
+    #for i in range(0,len(gk['excellent'])):
+    #    distribution_list = []
+    #    distribution_list.extend([5] * int(gk['excellent'].iloc[i]))
+    #    distribution_list.extend([4] * int(gk['very_good'].iloc[i]))
+    #    distribution_list.extend([3] * int(gk['average'].iloc[i]))
+    #    distribution_list.extend([2] * int(gk['poor'].iloc[i]))
+    #    distribution_list.extend([1] * int(gk['terrible'].iloc[i]))
+    #    
+    #    mu.append(np.mean(distribution_list))
+    #    sd.append(np.std(distribution_list))
+    #
+    #df['mu'] = mu
+    #df['sd'] = sd
+    #
+    #df['sd_lower'] = df['sd'] * distance_threshold_lower
+    #df['sd_upper'] = df['sd'] * distance_threshold_upper
     
-    # If the sd in review ratings and the number of reviews is high, then we
-    # assume that a part of the sd can be explained by taste differences in customers.
-    # The rest might be e.g. due to timing.
-    # Therefore we add a varibale 'taste_diff_dummy' that is 1 if the variance is larger 1
-    # and 0 otherwise.
-    
-    df['taste_diff_dummy'] = np.where((df.sd_lower < df.dist_to_mu) & (df.sd_upper > df.dist_to_mu),1,0)
+    ## Add a dummy variable for reviews of high variance hotels
+    #df['many_reviews_dummy'] = df['num_reviews'].apply(lambda x: 1 if x > np.mean(df['num_reviews']) else 0)
+    #df['high_var_dummy'] = df['sd'].apply(lambda x: 1 if  x > high_var_threshold else 0)
+    #df['dist_to_mu'] = 0
+    ##df.loc[(df['high_var_dummy'] == 1) & (df['many_reviews_dummy'] == 1), 'dist_to_mu'] = (df['average_rating'] - df['review_rating'])
+    #
+    #df.loc[(df['many_reviews_dummy'] == 1), 'dist_to_mu'] = (df['average_rating'] - df['review_rating'])
+    #
+    #
+    ## If the sd in review ratings and the number of reviews is high, then we
+    ## assume that a part of the sd can be explained by taste differences in customers.
+    ## The rest might be e.g. due to timing.
+    ## Therefore we add a varibale 'taste_diff_dummy' that is 1 if the variance is larger 1
+    ## and 0 otherwise.
+    #
+    #df['taste_diff_dummy'] = np.where((df.sd_lower < df.dist_to_mu) & (df.sd_upper > df.dist_to_mu),1,0)
     
     # bad month dummy
     av_rating_group = df.groupby(['hotel_name'])['average_rating'].mean()
@@ -222,13 +323,13 @@ def add_descriptive_variables(df, upper_bad_review_threshold, high_var_threshold
 
 
 
-def parameterization_rf_tatse_pred(info_df, nlp_df, bad_review_threshold, variance_threshold, dtm_lower, dtm_upper, bad_month_threshold):
+def parameterization_rf_tatse_pred(info_df, nlp_df, bad_review_threshold, bad_month_threshold):
     
     # Add some additional Variables to the initial data set
-    full_hotel_review_df = add_descriptive_variables(info_df, bad_review_threshold, variance_threshold, dtm_lower, dtm_upper, bad_month_threshold)
+    full_hotel_review_df = add_descriptive_variables(info_df, bad_review_threshold, bad_month_threshold)
   
     # select only relevant columns
-    sample_reviews_df = full_hotel_review_df[(full_hotel_review_df['dist_to_mu'] > 0) & (full_hotel_review_df['bad_month_dummy'] == 0)]
+    sample_reviews_df = full_hotel_review_df[(full_hotel_review_df['bad_month_dummy'] == 0)]
     sample_reviews_df = sample_reviews_df[['taste_diff_dummy']]
   
     slim_nlp_review_df = nlp_df.drop(['review_title','review_text','review', 'review_clean'], 1)
@@ -300,12 +401,13 @@ def parameterization_rf_tatse_pred(info_df, nlp_df, bad_review_threshold, varian
   
     # low_num_reviews = data_full[(data_full['many_reviews_dummy']==0) & (data_full['y_predicted']==1)]
     # low_num_review_results = low_num_reviews[['y_predicted', 'y_probability', 'hotel_name','average_rating','review_rating','review_text','dist_to_mu','sd','mu']]
-    df_without_train = df_without_train[['y_predicted', 'y_probability', 'hotel_name','average_rating','review_rating','review_text','dist_to_mu','sd','mu']]
+    df_without_train = df_without_train[['y_predicted', 'y_probability','hotel_name','average_rating','review_rating','review_text','std_hotels','mu_hotels', 'num_reviews']]
     print("DONE!")
   
     return df_without_train
  
   
+
 
 
 
