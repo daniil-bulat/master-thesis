@@ -157,13 +157,48 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import mean_squared_error
 
+# Directory
+os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis')
+
+# Data
+hotel_review_df = pd.read_parquet('data/UK_hotel_reviews.parquet')
+nlp_review_df = pd.read_parquet('data/full_nlp_review_df.parquet')
+
+bad_review_threshold = 3.1
+bad_month_threshold = 2.1
 
 
-result_df = pd.read_csv("data/result_data_wo_train.csv")
+
+# Add some additional Variables to the initial data set
+full_hotel_review_df = add_descriptive_variables(hotel_review_df, bad_review_threshold, bad_month_threshold)
+
+# select only relevant columns
+sample_reviews_df = full_hotel_review_df[(full_hotel_review_df['bad_month_dummy'] == 0)]
+sample_reviews_df = sample_reviews_df[['taste_diff_dummy']]
+
+slim_nlp_review_df = nlp_review_df.drop(['review_title','review_text','review', 'review_clean'], 1)
 
 
-data = sample_reviews_df.drop(['taste_diff_dummy','review', 'review_clean'],1)
-target = result_df['taste_diff_dummy']
+# join with nlp df
+sample_reviews_df = sample_reviews_df.join(slim_nlp_review_df)
+
+
+taste_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==1].iloc[0:3000,:]
+print(str(len(taste_reviews)) + " Taste Reviews")
+non_taste_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==0].iloc[0:3000,:]
+print(str(len(non_taste_reviews)) + " Non-Taste Reviews")
+
+sample_frames = [taste_reviews, non_taste_reviews]
+sample_reviews_df = pd.concat(sample_frames)
+
+
+label = "taste_diff_dummy"
+ignore_cols = [label]
+features = [c for c in sample_reviews_df.columns if c not in ignore_cols]
+
+# split the data into train and test
+X_train, X_test, y_train, y_test = train_test_split(sample_reviews_df[features], sample_reviews_df[label], test_size = 0.30, random_state = 77)
+
 
 
 pipeline = Pipeline(
@@ -188,6 +223,8 @@ search = GridSearchCV(
 )
 
 
+target = full_hotel_review_df[['taste_diff_dummy']]
+
 search.fit(nlp_review_df,target)
 search.best_params_ # {'model__n_estimators': 250, 'selector__k': 3339} all features
 search.best_score_ # -0.1327006496
@@ -197,8 +234,7 @@ search.best_score_ # -0.1327006496
 final_pipeline = search.best_estimator_
 final_classifier = final_pipeline.named_steps['selector']
 
-select_indices = final_pipeline.named_steps['selector'].transform(
-    np.arange(len(data.columns)).reshape(1, -1))
+select_indices = final_pipeline.named_steps['selector'].transform(np.arange(len(data.columns)).reshape(1, -1))
 
 
 feature_names = X_train.columns[select_indices]
@@ -210,14 +246,6 @@ dds.to_csv("feature_list_taste.csv")
 ##############################################################################
 # Random Forest
 ##############################################################################
-
-
-label = "taste_diff_dummy"
-ignore_cols = [label, 'review_clean', 'review']
-features = [c for c in sample_reviews_df.columns if c not in ignore_cols]
-
-# split the data into train and test
-X_train, X_test, y_train, y_test = train_test_split(sample_reviews_df[features], sample_reviews_df[label], test_size = 0.30, random_state = 77)
 
 
 # train a random forest classifier
@@ -352,12 +380,16 @@ rf_random.best_params_
 # Reevaluate Model
 y_preds = rf_random.predict(X_test)
 print(rf_random.score(X_train, y_train))  #1.0
-print(rf_random.score(X_test, y_test))   #0.8773333333333333
+print(rf_random.score(X_test, y_test))   #0.797
 
 # Confusion Matrix
 print(metrics.confusion_matrix(y_test, y_preds))
 #[[1240  233]
 #[ 135 1392]]
+
+
+#[[665  214]
+#[ 150 771]]
 
 
 # Evaluate Results
@@ -369,8 +401,8 @@ base_accuracy = rf.score(X_test, y_test)
 
 
 # Random Grid Model
-print('Train Accuracy = {:0.2f}%.'.format(rf_random.score(X_train, y_train)*100)) #1.0
-print('Test Accuracy = {:0.2f}%.'.format(rf_random.score(X_test, y_test)*100))   #0.8773333333333333
+print('Train Accuracy = {:0.2f}%.'.format(rf_random.score(X_train, y_train)*100)) #1.0 (still overfitting)
+print('Test Accuracy = {:0.2f}%.'.format(rf_random.score(X_test, y_test)*100))   #0.797
 random_accuracy = rf_random.score(X_test, y_test)
 
 # Improvement
@@ -448,9 +480,15 @@ param_grid = {
 }
 
 
-other_grid = GridSearchCV(SVC(), param_grid, refit=True, verbose=3)
-other_grid.fit(X_train,y_train) 
+other_grid = GridSearchCV(SVC(probability=True), param_grid, refit=True, verbose=3)
+other_grid.fit(X_train,y_train)
 
+
+# Confusion Matrix
+y_preds = other_grid.predict(X_test)
+print(metrics.confusion_matrix(y_test, y_preds))
+#[[649  230]
+#[ 182 739]]
 
 
 ## Reevaluate Results
@@ -460,9 +498,9 @@ print('Test Accuracy = {:0.2f}%.'.format(grid_search.score(X_test, y_test)*100))
 grid_search_accuracy = grid_search.score(X_test, y_test)
 
 # other Grid Search Model
-print('Train Accuracy = {:0.2f}%.'.format(other_grid.score(X_train, y_train)*100)) #0.9341428571428572
-print('Test Accuracy = {:0.2f}%.'.format(other_grid.score(X_test, y_test)*100))   #0.8883333333333333
-other_grid_search_accuracy = other_grid.score(X_test, y_test)
+print('Train Accuracy = {:0.2f}%.'.format(other_grid.score(X_train, y_train)*100)) #0.9731
+print('Test Accuracy = {:0.2f}%.'.format(other_grid.score(X_test, y_test)*100))   #0.7711
+other_grid_search_accuracy = other_grid.score(X_test, y_test) #0.7711
 
 # Improvement
 print('Improvement of {:0.2f}%.'.format( 100 * (other_grid_search_accuracy - grid_search_accuracy) / grid_search_accuracy))
@@ -471,61 +509,21 @@ print('Improvement of {:0.2f}%.'.format( 100 * (other_grid_search_accuracy - gri
 
 
 
-##############################################################################
-# Result DF
-##############################################################################
+figure_dir = '/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/figures/'
 
-y_pred_other_grid = other_grid.predict(X_test)
-
-
-taste_diff_result_df = pd.DataFrame(y_test)
-taste_diff_result_df['y_predicted'] = y_pred_other_grid
-
-
-full_sample_reviews_df = full_sample_reviews_df.drop(['taste_diff_dummy',
-                                                      'Unnamed: 0.1',
-                                                      'Unnamed: 0',
-                                                      'hotel_id',
-                                                      'review_title',
-                                                      'review_text',
-                                                      'review_clean'], 1)
-
-
-taste_diff_result_df = taste_diff_result_df.join(full_sample_reviews_df)
-
-
-
-# Full Data Set
-
-data = full_sample_reviews_df.drop(['review_rating',
-                                    'hotel_name',
-                                    'review_clean'],1)
-
-
-
-target = sample_reviews_df['taste_diff_dummy']
-
-
-y_pred_other_grid = other_grid.predict(X_test)
-
-full_sample_reviews_df.columns
+# Directory
+os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/code')
+from random_forest_functions import roc_curve_custom, pr_curve_custom
 
 
 
 
-
-# Save DF
-taste_diff_result_df.to_parquet("data/taste_diff_result_df_TEST.parquet", compression=None)
-
-
-# Read with parquet
-taste_diff_result_df = pd.read_parquet("data/taste_diff_result_df_TEST.parquet", engine="fastparquet")
+# ROC Curve
+roc_curve_custom(other_grid, X_test, y_test, y_preds, 'taste_SVM_ROC_curve.png', figure_dir)
 
 
-
-
-
-
+# PR Curve
+pr_curve_custom(y_test, y_preds, 'taste_SVM_PR_curve.png', figure_dir)
 
 
 
