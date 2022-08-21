@@ -19,7 +19,6 @@ import numpy as np
 
 
 
-
 # Directory
 os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/code')
 from sentiment_and_nlp_functions import clean_text, show_wordcloud, sentiment_analysis_for_reviews,add_descriptive_variables
@@ -31,9 +30,11 @@ from vader_lexicon import import_adj_vader
 ##############################################################################
 # Data Cleaning and Applying NLP
 ##############################################################################
-
 os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis')
 hotel_review_df = pd.read_parquet('data/UK_hotel_reviews.parquet')
+hotel_review_df = hotel_review_df.reset_index()
+hotel_review_df.rename(columns = {'index':'ID'}, inplace = True)
+
 
 ## NLP
 import_adj_vader() # Vader Lexicon
@@ -42,10 +43,13 @@ nlp_review_df = sentiment_analysis_for_reviews(hotel_review_df, clean_text)
 
 # Save NLP as parquet
 nlp_review_df.to_parquet("data/full_nlp_review_df.parquet", compression=None)
+nlp_review_df = nlp_review_df.reset_index()
+nlp_review_df.rename(columns = {'index':'ID'}, inplace = True)
+
 
 
 # Add some additional Variables to the initial data set
-full_hotel_review_df = add_descriptive_variables(hotel_review_df, 3.6, 1.12, 1.037, 2.969, 2.1)
+full_hotel_review_df = add_descriptive_variables(hotel_review_df, 3.1, 2.1)
 
 
 # Save Hotel Information as parquet
@@ -59,24 +63,22 @@ full_hotel_review_df.to_parquet("data/full_hotel_review_df.parquet", compression
 ##############################################################################
 
 # select only relevant columns
-sample_reviews_df = full_hotel_review_df[['taste_diff_dummy',
+sample_reviews_df = full_hotel_review_df[['ID',
+                                          'bad_review_dummy',
                                           'review_rating']]
 
-slim_nlp_review_df = nlp_review_df[['review',
+slim_nlp_review_df = nlp_review_df[['ID',
+                                    'review',
                                     'review_clean',
                                     'compound',
                                     'nb_words',
                                     'pos',
                                     'neg']]
 
-sample_reviews_df = sample_reviews_df.join(slim_nlp_review_df)
 
-bad_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==1].iloc[0:300,:]
-good_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==0].iloc[0:500,:]
-
-sample_frames = [bad_reviews, good_reviews]
-sample_reviews_df = pd.concat(sample_frames)
-
+# for future use
+joined_hotel_review_df = pd.merge(full_hotel_review_df,nlp_review_df[['ID','compound']],on='ID', how='left')
+sample_reviews_df = joined_hotel_review_df.drop_duplicates(subset='review_text', keep="last")
 
 
 
@@ -125,13 +127,10 @@ for x in [0, 1]:
 
 # Lables
 plt.title('Density Plot of Review Sentiment')
-plt.xlabel('Sentiment Score')
+plt.xlabel('Compound Sentiment Score')
 plt.ylabel('Density')
 plt.legend()
 plt.savefig('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/figures/density_plot_reviews.png')
-
-
-
 
 
 

@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import seaborn as sns
+import scipy
+from scipy.stats import norm, skew, skewnorm
 
 os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/code')
 from parameterization_functions import normal, skew_normal
@@ -22,12 +24,13 @@ from parameterization_functions import normal, skew_normal
 # Figure Directory
 figure_dir = '/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/figures/'
 
+
 # Data
 os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis')
 df_hotel_reviews = pd.read_parquet('data/UK_hotel_reviews.parquet')
 
-# Add a dummy variable for ratings less than 3.6
-df_hotel_reviews['bad_review_dummy'] = df_hotel_reviews['review_rating'].apply(lambda x: 1 if x<3.6 else 0)
+# Add a dummy variable for ratings less than 3.0
+df_hotel_reviews['bad_review_dummy'] = df_hotel_reviews['review_rating'].apply(lambda x: 1 if x<3.1 else 0)
 
 
 ###############################################################################
@@ -36,7 +39,7 @@ df_hotel_reviews['bad_review_dummy'] = df_hotel_reviews['review_rating'].apply(l
 
 # Scraped Data (considering only reviews that were actually scraped)
 
-review_column = pd.DataFrame(df_hotel_reviews['review_text'].apply(lambda x: len(str(x).split(' '))))
+review_column = pd.DataFrame(df_hotel_reviews['review_text'].apply(lambda x: len(str(x).split(' ')))) #word count
 
 print(len(review_column['review_text']))
 print(np.mean(review_column['review_text']))
@@ -50,8 +53,8 @@ df_hotel_reviews['word_count'] = review_column['review_text']
 
 sns.set_style("white")
 sns.regplot(x='review_rating', y="word_count", data=df_hotel_reviews,
-            scatter_kws={"color": (0.5529411764705883, 0.6274509803921569, 0.796078431372549)},
-            line_kws={"color": (0.9058823529411765, 0.5411764705882353, 0.7647058823529411)})
+            scatter_kws={"color": (0.788558246828143, 0.8066897347174163, 0.8948558246828143)},
+            line_kws={"color": (0.2823529411764706, 0.47058823529411764, 0.8156862745098039)})
 
 
 
@@ -59,6 +62,7 @@ plt.title('Word Count vs Average Score')
 plt.xlabel('Review Rating')
 plt.ylabel('Word Count')
 plt.savefig(figure_dir + 'word_count_v_avScore.png')
+
 
 
 print(np.mean(df_hotel_reviews['review_rating']))
@@ -100,7 +104,7 @@ perc_of_neg_reviews = round((1-neg_reviews)*100,2)
 # Negative Review Distribution
 sns.set_style("white")
 sns.distplot(neg_reviews['review_rating'], hist=True, kde=False, 
-             bins=int(3), color = (0.9058823529411765, 0.5411764705882353, 0.7647058823529411),
+             bins=int(3), color = (0.788558246828143, 0.8066897347174163, 0.8948558246828143), #(0.9058823529411765, 0.5411764705882353, 0.7647058823529411),
              hist_kws={'edgecolor':'black'})
 
 ## Lables
@@ -114,7 +118,7 @@ plt.savefig(figure_dir + 'Distribution_Neg_Reviews.png')
 
 # Positive Review Distribution
 sns.distplot(pos_reviews['review_rating'], hist=True, kde=False, 
-             bins=int(2), color = (0.5529411764705883, 0.6274509803921569, 0.796078431372549),
+             bins=int(2), color = (0.2823529411764706, 0.47058823529411764, 0.8156862745098039), #(0.5529411764705883, 0.6274509803921569, 0.796078431372549),
              hist_kws={'edgecolor':'black'})
 
 ## Lables
@@ -145,10 +149,6 @@ max(hotel_ranking_dist['tripadv_ranking'])
 min(hotel_ranking_dist['tripadv_ranking'])
 
 
-
-
-
-
 # Barplot How much do categories account for num reviews
 y_1 = np.mean(hotel_ranking_dist['excellent'] / hotel_ranking_dist['num_reviews'])
 y_2 = np.mean(hotel_ranking_dist['very_good'] / hotel_ranking_dist['num_reviews'])
@@ -159,7 +159,7 @@ y_5 = np.mean(hotel_ranking_dist['terrible'] / hotel_ranking_dist['num_reviews']
 x = ['terrible', 'poor', 'average', 'very good', 'excellent']
 y = [y_5, y_4, y_3, y_2, y_1]
 
-sns.set_theme(style="whitegrid", palette="pastel")
+sns.set_theme(style="whitegrid", palette="PuBuGn_r")
 sns.barplot(x,y)
 plt.savefig(figure_dir + 'barplot_cat_num_rev.png')
 
@@ -179,8 +179,8 @@ plt.savefig(figure_dir + 'boxplot.png')
 # Total_Number_of_Reviews vs Average_Score
 sns.set_style("white")
 sns.regplot(x='average_rating', y="num_reviews", data=hotel_ranking_dist,
-            scatter_kws={"color": (0.5529411764705883, 0.6274509803921569, 0.796078431372549)},
-            line_kws={"color": (0.9058823529411765, 0.5411764705882353, 0.7647058823529411)})
+            scatter_kws={"color": (0.788558246828143, 0.8066897347174163, 0.8948558246828143)},
+            line_kws={"color": (0.2823529411764706, 0.47058823529411764, 0.8156862745098039)})
 
 
 
@@ -197,7 +197,7 @@ hotel_ranking_dist['average_rating'].value_counts(normalize = True)
 
 # Histogram
 sns.distplot(hotel_ranking_dist['average_rating'], hist=True, kde=False, 
-             bins=int(180/5), color = (0.9058823529411765, 0.5411764705882353, 0.7647058823529411),
+             bins=int(180/5), color = (0.2823529411764706, 0.47058823529411764, 0.8156862745098039),
              hist_kws={'edgecolor':'black'})
 
 # Lables
@@ -210,15 +210,12 @@ plt.savefig(figure_dir + 'Histogram_of_AvScore.png')
 
 
 
-
-
-
 ##############################################################################
 # Pair Plot
 ##############################################################################
 
 pairplot_df = df_hotel_reviews[['bad_review_dummy', 'num_reviews','average_rating', 'tripadv_ranking']]
-sns.pairplot(pairplot_df,hue='bad_review_dummy', palette='husl')
+sns.pairplot(pairplot_df,hue='bad_review_dummy', palette='PuBuGn_r')
 
 plt.savefig(figure_dir + 'pairplot.png')
 
@@ -245,7 +242,7 @@ month_dist.sort_values(by='review_date',inplace=True)
 
 # Plot
 sns.set_theme(style="whitegrid", palette="pastel")
-bp = sns.barplot(month_dist['review_date'], month_dist['count'],color = (0.5529411764705883, 0.6274509803921569, 0.796078431372549))
+bp = sns.barplot(month_dist['review_date'], month_dist['count'],color = (0.2823529411764706, 0.47058823529411764, 0.8156862745098039))
 bp.set_xticklabels(bp.get_xticklabels(),rotation = 45)
 
 ## Lables
@@ -308,24 +305,24 @@ for i in range(0,len(gk['excellent'])):
     
 mu = np.mean(distribution_list)
 sd = np.std(distribution_list)
-skew = scipy.stats.skew(distribution_list, axis = 0, bias = True)
+skew_v = scipy.stats.skew(distribution_list, axis = 0, bias = True)
 num_rev = len(distribution_list)
 
 
 # create some random data from a skewnorm
-data = skewnorm.rvs(skew, loc=mu, scale=sd, size=num_rev)
+data = skewnorm.rvs(skew_v, loc=mu, scale=sd, size=num_rev)
 
 # draw a histogram and kde of the given data
 ax = sns.distplot(data, kde_kws={'label':'kde of given data'}, label='histogram')
 
 # 70%
 sd_mod = sd * 1.037
-scipy.stats.skewnorm.cdf(mu+sd_mod,skew,mu,sd) - scipy.stats.skewnorm.cdf(mu-sd_mod,skew,mu,sd)
+scipy.stats.skewnorm.cdf(mu+sd_mod,skew_v,mu,sd) - scipy.stats.skewnorm.cdf(mu-sd_mod,skew_v,mu,sd)
 
 # 5%
 upper = 1.969
 lower = 0
-scipy.stats.skewnorm.cdf(upper,skew,mu,sd)
+scipy.stats.skewnorm.cdf(upper,skew_v,mu,sd)
 
 
 ##############################################################################
@@ -336,13 +333,13 @@ full_rr_distribution = pd.DataFrame(distribution_list, columns=['review_rating']
 
 mu = np.mean(full_rr_distribution)
 sd = np.std(full_rr_distribution)
-skew = float(scipy.stats.skew(full_rr_distribution, axis = 0, bias = True))*(-1)
+skew_vf = float(scipy.stats.skew(full_rr_distribution, axis = 0, bias = True))*(-1)
 num_rev = len(full_rr_distribution)
 
 ax = sns.histplot(full_rr_distribution, stat="density", 
-             bins=int(5), color = (0.5529411764705883, 0.6274509803921569, 0.796078431372549))
+             bins=int(5), color = (0.2823529411764706, 0.47058823529411764, 0.8156862745098039))
 
-skew_normal(mu, sd, skew, num_rev)
+skew_normal(mu, sd, skew_vf, num_rev)
 normal(mu, sd, num_rev)
 
 
@@ -352,10 +349,6 @@ plt.xlabel('Review Rating')
 plt.ylabel('pdf')
 plt.legend(labels=["skew normal distribution","normal distribution", "Review Rating"])
 plt.savefig(figure_dir + 'skew_norm_approx.png')
-
-
-
-
 
 
 

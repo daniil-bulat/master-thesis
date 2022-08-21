@@ -25,13 +25,12 @@ figure_dir = '/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/
 
 # Import Data
 hotel_review_df = pd.read_parquet('data/UK_hotel_reviews.parquet')
-hotel_review_df = hotel_review_df.drop_duplicates(subset='review_text', keep="last")
 
 result_df = pd.read_csv('data/result_data_wo_train.csv')
-result_df = result_df.drop_duplicates(subset='review_text', keep="last")
 
 
 # Taste Reviews
+len(result_df[result_df['y_predicted']==1]) / len(result_df['y_predicted'])
 taste_reviews = result_df[(result_df['y_predicted']==1) & (result_df['review_rating']<3.1)]
 
 # result df
@@ -82,7 +81,7 @@ av_rating_perc_taste = av_rating_perc_taste.reset_index()
 
 # plot
 sns.set_theme(style="whitegrid")
-sns.barplot(av_rating_perc_taste['av_hotel_rat'],av_rating_perc_taste['perc_of_taste']*100, color = (0.5529411764705883, 0.6274509803921569, 0.796078431372549))
+sns.barplot(av_rating_perc_taste['av_hotel_rat'],av_rating_perc_taste['perc_of_taste']*100, color = (0.788558246828143, 0.8066897347174163, 0.8948558246828143))
 
 plt.title('Fraction of Taste-Driven Reviews per Hotel Class')
 plt.xlabel('Average Hotel Rating')
@@ -108,13 +107,12 @@ av_rat_vs_diff = pd.DataFrame(joined_taste_diff.groupby('average_rating')['diffe
 av_rat_vs_diff = av_rat_vs_diff.reset_index()
 
 sns.set_theme(style="whitegrid")
-sns.barplot(av_rat_vs_diff['average_rating'],av_rat_vs_diff['difference'], color = (0.5529411764705883, 0.6274509803921569, 0.796078431372549))
+sns.barplot(av_rat_vs_diff['average_rating'],av_rat_vs_diff['difference'], color = (0.788558246828143, 0.8066897347174163, 0.8948558246828143))
 
 plt.title('Impact of Taste-Driven Reviews per Hotel Class')
 plt.xlabel('Average Hotel Rating')
 plt.ylabel('Impact of Taste-Driven Reviews')
 plt.savefig(figure_dir + 'taste_impact_on_ratings.png')
-
 
 
 ##############################################################################
@@ -303,8 +301,8 @@ min(grouped_final['diff_to_old'])
 
 sns.set_theme(style="white")
 sns.regplot(x='diff_to_old', y="rev_taste_ratio", data=grouped_final,
-            scatter_kws={"color": (0.5529411764705883, 0.6274509803921569, 0.796078431372549)},
-            line_kws={"color": (0.9058823529411765, 0.5411764705882353, 0.7647058823529411)})
+            scatter_kws={"color": (0.788558246828143, 0.8066897347174163, 0.8948558246828143)},
+            line_kws={"color": (0.2823529411764706, 0.47058823529411764, 0.8156862745098039)})
 
 plt.title('Taste-Driven Review Impact on Rating Improvement')
 plt.xlabel('Rating Improvement')
@@ -319,7 +317,7 @@ most_probable = result_df[(result_df['y_predicted']==1) & (result_df['review_rat
 most_probable = most_probable.sort_values('y_probability')
 most_probable['review_text'].head(10)
 
-most_probable.to_csv("most_probable_taste_reviews.csv")
+most_probable.to_csv("data/most_probable_taste_reviews.csv")
 
 
 

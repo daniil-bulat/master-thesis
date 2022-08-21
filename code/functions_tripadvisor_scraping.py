@@ -2,7 +2,7 @@
 ##############################################################################
 #                                                                            #
 #                                 Functions                                  #
-#                          TripAdvisor Review Scraper                        #
+#                       TripAdvisor Review Scraper                           #
 #                               Master Thesis                                #
 #                               Daniil Bulat                                 #
 #                                                                            #

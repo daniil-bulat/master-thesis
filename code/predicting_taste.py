@@ -52,6 +52,7 @@ os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis')
 
 # Data
 hotel_review_df = pd.read_parquet('data/UK_hotel_reviews.parquet')
+
 nlp_review_df = pd.read_parquet('data/full_nlp_review_df.parquet')
 
 
@@ -71,8 +72,8 @@ sample_reviews_df = hotel_review_df[['taste_diff_dummy',
 
 
 
-bad_reviews = hotel_review_df[hotel_review_df["taste_diff_dummy"]==1].iloc[0:5000,:]
-good_reviews = hotel_review_df[hotel_review_df["taste_diff_dummy"]==0].iloc[0:5000,:]
+bad_reviews = hotel_review_df[hotel_review_df["taste_diff_dummy"]==1].iloc[0:3000,:]
+good_reviews = hotel_review_df[hotel_review_df["taste_diff_dummy"]==0].iloc[0:3000,:]
 
 sample_frames = [bad_reviews, good_reviews]
 sample_reviews_df = pd.concat(sample_frames)
@@ -192,12 +193,33 @@ sample_frames = [taste_reviews, non_taste_reviews]
 sample_reviews_df = pd.concat(sample_frames)
 
 
+######
+full_hotel_review_df
+full_hotel_review_df.index = full_hotel_review_df.index.set_names(['ID'])
+taste_df_rf = full_hotel_review_df.reset_index()
+taste_df_rf = taste_df_rf[['ID', 'taste_diff_dummy']]
+
+nlp_review_df.index = nlp_review_df.index.set_names(['ID'])
+
+joined_hotel_review_df = pd.merge(taste_df_rf,nlp_review_df,on='ID',how='left')
+joined_hotel_review_df = joined_hotel_review_df.drop(['ID', 'review_title', 'review_text', 'review','review_clean'],axis=1)
+
+
+ntdr = joined_hotel_review_df[joined_hotel_review_df['taste_diff_dummy']==1].iloc[0:3000]
+n_ntdr = joined_hotel_review_df[joined_hotel_review_df['taste_diff_dummy']==0].iloc[0:3000]
+
+frames = [ntdr, n_ntdr]
+joined_df = pd.concat(frames)
+
+
+######
+
 label = "taste_diff_dummy"
 ignore_cols = [label]
-features = [c for c in sample_reviews_df.columns if c not in ignore_cols]
+features = [c for c in joined_df.columns if c not in ignore_cols]
 
 # split the data into train and test
-X_train, X_test, y_train, y_test = train_test_split(sample_reviews_df[features], sample_reviews_df[label], test_size = 0.30, random_state = 77)
+X_train, X_test, y_train, y_test = train_test_split(joined_df[features], joined_df[label], test_size = 0.30, random_state = 77)
 
 
 
@@ -264,9 +286,8 @@ print(rf.score(X_test, y_test)) # 0.8726666666666667
 
 # Confusion Matrix
 print(metrics.confusion_matrix(y_test, y_preds))
-#[[1239  234]
-#[ 139 1388]]
-
+#[[653 226]
+#[161 760]]
 
 
 
@@ -369,7 +390,7 @@ rf_random.fit(X_train, y_train)
 print("done")
 
 rf_random.best_params_
-#{'n_estimators': 500,
+#{'n_estimators': np.linspace,
 #'min_samples_split': 10,
 #'min_samples_leaf': 1,
 #'max_features': 'auto',
@@ -460,9 +481,11 @@ print('Improvement of {:0.2f}%.'.format( 100 * (grid_search_accuracy - random_ac
 # Other Grid Search
 ##############################################################################
 
+joined_hotel_review_df = pd.merge(full_hotel_review_df,nlp_review_df,on='ID', how='left')
+
 param_grid = { 
-  'C': [0.1, 100, 500, 1000], 
-  'gamma': [1, 0.1,  0.001]
+  'C': [1000, 5000, 10000], 
+  'gamma': [0.001, 0.0001]
 }
 
 
@@ -472,11 +495,11 @@ other_grid.fit(X_train,y_train)
 other_grid.best_params_
 
 
-#other_grid.best_params_ = {'C': 500, 'gamma': 0.001}
+#other_grid.best_params_ = {'C': 1000, 'gamma': 0.001}
 
 param_grid = { 
-  'C': [500], 
-  'gamma': [0.001]
+  'C': [5000], 
+  'gamma': [0.0001]
 }
 
 
@@ -489,6 +512,9 @@ y_preds = other_grid.predict(X_test)
 print(metrics.confusion_matrix(y_test, y_preds))
 #[[649  230]
 #[ 182 739]]
+
+#[[815 658]
+#[682 845]]
 
 
 ## Reevaluate Results
@@ -504,6 +530,11 @@ other_grid_search_accuracy = other_grid.score(X_test, y_test) #0.7711
 
 # Improvement
 print('Improvement of {:0.2f}%.'.format( 100 * (other_grid_search_accuracy - grid_search_accuracy) / grid_search_accuracy))
+
+
+# show feature importance
+feature_importances_df = pd.DataFrame({"feature": features, "importance": other_grid.feature_importances_}).sort_values("importance", ascending = False)
+feature_importances_df.head(10)
 
 
 

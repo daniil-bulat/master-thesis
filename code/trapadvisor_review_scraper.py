@@ -40,8 +40,9 @@ os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis')
 # first we scrape urls to hotel pages on tripadvisor
 # from where we will extract the reviews
 
-# Install WebDriver
-driver = webdriver.Chrome('/Users/danielbulat/Desktop/Uni/Master Thesis/python/chromedriver')
+# Install WebDriver from the location (path) where Chrome webdriver is saved
+path_webdriver = ''
+driver = webdriver.Chrome(path_webdriver)
 
 # get url
 url = "https://www.tripadvisor.co.uk/Search?q=united%20kingdom&searchSessionId=73C73D11F5E64C2E409C286BBD00AAC61655044053862ssid&searchNearby=false&geo=186338&sid=4FE063B7636749AE989E2A45EAFA52751655044068670&blockRedirect=true&ssrc=h&rf=26&o=900"
@@ -77,7 +78,7 @@ tripadvisor_link_list = pd.DataFrame(hotel_link_list)
 tripadvisor_link_list = tripadvisor_link_list.reset_index()
 
 # Save to CSV
-tripadvisor_link_list.to_csv("tripadvisor_link_list_2.csv",index=False)
+tripadvisor_link_list.to_csv("tripadvisor_link_list.csv",index=False)
 
 
 # Convert back to list for further use
@@ -125,8 +126,6 @@ hotel_links_more_df.to_csv("tripadvisor_long_link_list.csv",index=False)
 # Sort desending
 hotel_links_more_df = hotel_links_more_df.sort_values(['index'], ascending=[False])
 
-#hotel_links_more_df = pd.read_csv("data/tripadvisor_long_link_list.csv")
-
 
 
 ###############################################################################
@@ -158,6 +157,10 @@ df_new_hotel_reviews = add_ranking(df_new_hotel_reviews)
 
 # Adjust date column
 df_new_hotel_reviews['review_date'] = df_new_hotel_reviews['review_date'].str.replace('Date of stay:', '')
+
+# Drop Duplicates
+df_new_hotel_reviews = df_new_hotel_reviews.drop_duplicates(subset='review_text', keep="last")
+
 
 
 # Save DF to csv
