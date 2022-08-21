@@ -28,6 +28,8 @@ hotel_review_df = pd.read_parquet('data/UK_hotel_reviews.parquet')
 
 result_df = pd.read_csv('data/result_data_wo_train.csv')
 
+result_df = result_df.drop_duplicates(subset='review_text', keep="last")
+
 
 # Taste Reviews
 len(result_df[result_df['y_predicted']==1]) / len(result_df['y_predicted'])

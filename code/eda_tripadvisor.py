@@ -156,20 +156,21 @@ y_3 = np.mean(hotel_ranking_dist['average'] / hotel_ranking_dist['num_reviews'])
 y_4 = np.mean(hotel_ranking_dist['poor'] / hotel_ranking_dist['num_reviews'])
 y_5 = np.mean(hotel_ranking_dist['terrible'] / hotel_ranking_dist['num_reviews'])
 
-x = ['terrible', 'poor', 'average', 'very good', 'excellent']
+x = ['1', '2', '3', '4', '5']
 y = [y_5, y_4, y_3, y_2, y_1]
 
-sns.set_theme(style="whitegrid", palette="PuBuGn_r")
+sns.set_theme(style="whitegrid", palette="BuPu_r")
 sns.barplot(x,y)
 plt.savefig(figure_dir + 'barplot_cat_num_rev.png')
 
 
 
 
+
 # BOXPLOT
 ax = sns.boxplot(x="average_rating", y="num_reviews", data=hotel_ranking_dist)
-plt.title('Number of Reviews vs Average Score')
-plt.xlabel('Average Score')
+plt.title('Number of Reviews vs Average Rating')
+plt.xlabel('Average Rating')
 plt.ylabel('Number of Reviews')
 plt.savefig(figure_dir + 'boxplot.png')
 
@@ -184,8 +185,8 @@ sns.regplot(x='average_rating', y="num_reviews", data=hotel_ranking_dist,
 
 
 
-plt.title('Total Number of Reviews vs Average Score')
-plt.xlabel('Average Score')
+plt.title('Total Number of Reviews vs Average Rating')
+plt.xlabel('Average Rating')
 plt.ylabel('Total Number of Reviews')
 plt.savefig(figure_dir + 'number_of_reviews_v_avScore.png')
 
@@ -201,8 +202,8 @@ sns.distplot(hotel_ranking_dist['average_rating'], hist=True, kde=False,
              hist_kws={'edgecolor':'black'})
 
 # Lables
-plt.title('Histogram of Average Score')
-plt.xlabel('Average Score')
+plt.title('Histogram of Average Rating')
+plt.xlabel('Average Rating')
 plt.ylabel('Frequency')
 plt.savefig(figure_dir + 'Histogram_of_AvScore.png')
 
@@ -215,7 +216,7 @@ plt.savefig(figure_dir + 'Histogram_of_AvScore.png')
 ##############################################################################
 
 pairplot_df = df_hotel_reviews[['bad_review_dummy', 'num_reviews','average_rating', 'tripadv_ranking']]
-sns.pairplot(pairplot_df,hue='bad_review_dummy', palette='PuBuGn_r')
+sns.pairplot(pairplot_df,hue='bad_review_dummy', palette='BuPu_r')
 
 plt.savefig(figure_dir + 'pairplot.png')
 
