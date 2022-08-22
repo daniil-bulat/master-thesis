@@ -15,8 +15,8 @@ from scipy.stats import norm, skewnorm, lognorm, stats
 
 
 # add directories
-directory_path = ''
-directory_functions_path = ''
+directory_path = '/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis'
+directory_functions_path = '/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/code'
 directory_figure_path = ''
 
 
@@ -31,8 +31,9 @@ from parameterization_functions import normal, skew_normal
 
 # Read in data
 os.chdir(directory_path)
-hotel_review_df = pd.read_parquet('data/UK_hotel_reviews.parquet')
+hotel_review_df = pd.read_parquet('data/full_hotel_review_df.parquet')
 nlp_review_df = pd.read_parquet('data/full_nlp_review_df.parquet')
+nlp_review_df = nlp_review_df.drop_duplicates(subset='review_text', keep="last") # drop duplicates
 
 
 

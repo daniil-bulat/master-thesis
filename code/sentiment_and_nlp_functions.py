@@ -337,11 +337,11 @@ def parameterization_rf_tatse_pred(info_df, nlp_df, bad_review_threshold, bad_mo
 
     # join with nlp df
     sample_reviews_df = sample_reviews_df.join(slim_nlp_review_df)
-  
+    sample_reviews_df = sample_reviews_df.dropna()
     
-    taste_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==1].iloc[0:3000,:]
+    taste_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==1].iloc[0:3000,:]  
     print(str(len(taste_reviews)) + " Taste Reviews")
-    non_taste_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==0].iloc[0:3000,:]
+    non_taste_reviews = sample_reviews_df[sample_reviews_df["taste_diff_dummy"]==0].iloc[0:3000,:]  
     print(str(len(non_taste_reviews)) + " Non-Taste Reviews")
   
     sample_frames = [taste_reviews, non_taste_reviews]
@@ -364,9 +364,8 @@ def parameterization_rf_tatse_pred(info_df, nlp_df, bad_review_threshold, bad_mo
   
       # Rado Forest
     param_grid = {
-        'C': [500], 
-        'gamma': [0.001],
-        'kernel': ['rbf']}
+        'C': [5000], 
+        'gamma': [0.0001]}
 
   
   

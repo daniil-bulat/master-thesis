@@ -10,20 +10,10 @@
 ##############################################################################
 ##############################################################################
 
-import pandas as pd
 import os
-import nltk
-from nltk.corpus import wordnet
-import string
+import numpy as np
+import pandas as pd
 from sklearn import metrics
-from nltk import pos_tag
-from nltk.corpus import stopwords
-from nltk.tokenize import WhitespaceTokenizer
-from nltk.stem import WordNetLemmatizer
-from nltk.sentiment.vader import SentimentIntensityAnalyzer
-from gensim.test.utils import common_texts
-from gensim.models.doc2vec import Doc2Vec, TaggedDocument
-from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import TfidfVectorizer
 import seaborn as sns
@@ -31,29 +21,13 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_curve, auc, roc_auc_score
 from nltk.metrics import ConfusionMatrix
-import numpy as np
-from sklearn.metrics import average_precision_score, precision_recall_curve
-from funcsigs import signature
-from wordcloud import WordCloud
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
-import time
-from dask import dataframe as dd
-import dask.multiprocessing
-import pyarrow
-from sklearn import preprocessing
-from sklearn import utils
 from sklearn.svm import SVC
 from sklearn.feature_selection import SelectKBest,f_regression
 from sklearn.pipeline import Pipeline
-from sklearn.linear_model import LinearRegression
-from sklearn.neighbors import KNeighborsRegressor
-from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import mean_squared_error
 
 
 directory_path = ''
@@ -72,7 +46,6 @@ os.chdir(directory_path)
 
 # Data
 full_hotel_review_df = pd.read_parquet("data/full_hotel_review_df.parquet", compression=None)
-
 nlp_review_df = pd.read_parquet('data/full_nlp_review_df.parquet')
 
 
@@ -351,8 +324,6 @@ print('Improvement of {:0.2f}%.'.format( 100 * (grid_search_accuracy - random_ac
 ##############################################################################
 # Other Grid Search
 ##############################################################################
-
-joined_hotel_review_df = pd.merge(full_hotel_review_df,nlp_review_df,on='ID', how='left')
 
 param_grid = { 
   'C': [1000, 5000, 10000], 
