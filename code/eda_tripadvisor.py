@@ -17,16 +17,22 @@ import seaborn as sns
 import scipy
 from scipy.stats import norm, skew, skewnorm
 
-os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/code')
+
+directory_path = ''
+directory_functions_path = ''
+directory_figure_path = ''
+
+
+os.chdir(directory_functions_path)
 from parameterization_functions import normal, skew_normal
 
 
 # Figure Directory
-figure_dir = '/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/figures/'
+figure_dir = directory_figure_path
 
 
 # Data
-os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis')
+os.chdir(directory_path)
 df_hotel_reviews = pd.read_parquet('data/UK_hotel_reviews.parquet')
 
 # Add a dummy variable for ratings less than 3.0

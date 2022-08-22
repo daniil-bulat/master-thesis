@@ -2,7 +2,7 @@
 ##############################################################################
 #                                                                            #
 #                             Sentiment Analysis                             #
-#                                 good / bad                                 #
+#                            positive / negative                             #
 #                            TripAdvisor Reviews                             #
 #                               Master Thesis                                #
 #                                                                            #
@@ -18,9 +18,13 @@ import seaborn as sns
 import numpy as np
 
 
+directory_path = ''
+directory_functions_path = ''
+directory_figure_path = ''
+
 
 # Directory
-os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/code')
+os.chdir(directory_functions_path)
 from sentiment_and_nlp_functions import clean_text, show_wordcloud, sentiment_analysis_for_reviews,add_descriptive_variables
 from vader_lexicon import import_adj_vader
 
@@ -30,7 +34,7 @@ from vader_lexicon import import_adj_vader
 ##############################################################################
 # Data Cleaning and Applying NLP
 ##############################################################################
-os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis')
+os.chdir(directory_path)
 hotel_review_df = pd.read_parquet('data/UK_hotel_reviews.parquet')
 hotel_review_df = hotel_review_df.reset_index()
 hotel_review_df.rename(columns = {'index':'ID'}, inplace = True)

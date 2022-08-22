@@ -14,21 +14,23 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+# add directories
+directory_path = ''
+directory_functions_path = ''
+directory_figure_path = ''
 
 # Directory
-os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis')
+os.chdir(directory_path)
 
 
 # Figure Directory
-figure_dir = '/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/figures/'
+figure_dir = directory_figure_path
 
 
 # Import Data
 hotel_review_df = pd.read_parquet('data/UK_hotel_reviews.parquet')
 
 result_df = pd.read_csv('data/result_data_wo_train.csv')
-
-result_df = result_df.drop_duplicates(subset='review_text', keep="last")
 
 
 # Taste Reviews
@@ -320,11 +322,6 @@ most_probable = most_probable.sort_values('y_probability')
 most_probable['review_text'].head(10)
 
 most_probable.to_csv("data/most_probable_taste_reviews.csv")
-
-
-
-
-
 
 
 

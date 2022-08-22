@@ -56,15 +56,19 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import mean_squared_error
 
 
+directory_path = ''
+directory_functions_path = ''
+directory_figure_path = ''
+
 
 # Import functions
-os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/code')
+os.chdir(directory_functions_path)
 from random_forest_functions import roc_curve_custom, pr_curve_custom
 
 
 # Directory
-figure_dir = '/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/figures/'
-os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis')
+figure_dir = directory_figure_path
+os.chdir(directory_path)
 
 # Data
 full_hotel_review_df = pd.read_parquet("data/full_hotel_review_df.parquet", compression=None)

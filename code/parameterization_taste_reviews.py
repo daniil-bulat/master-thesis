@@ -13,17 +13,24 @@ import os
 import scipy
 from scipy.stats import norm, skewnorm, lognorm, stats
 
+
+# add directories
+directory_path = ''
+directory_functions_path = ''
+directory_figure_path = ''
+
+
 # Figure Directory
-figure_dir = '/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/figures/'
+figure_dir = directory_figure_path
 
 # Directory
-os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/code')
+os.chdir(directory_functions_path)
 from sentiment_and_nlp_functions import parameterization_rf_tatse_pred, add_descriptive_variables
 from parameterization_functions import normal, skew_normal
 
 
 # Read in data
-os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis')
+os.chdir(directory_path)
 hotel_review_df = pd.read_parquet('data/UK_hotel_reviews.parquet')
 nlp_review_df = pd.read_parquet('data/full_nlp_review_df.parquet')
 

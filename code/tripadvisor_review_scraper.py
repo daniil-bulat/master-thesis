@@ -22,14 +22,17 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 import pyarrow.parquet as pq
 
-os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/code')
-##############################################################################
+directory_path = ''
+directory_functions_path = ''
+directory_figure_path = ''
+
 # Import own Functions
+os.chdir(directory_functions_path)
 from functions_tripadvisor_scraping import headers_for_bs, hotel_info_function, add_ranking
 ##############################################################################
 
 # Directory
-os.chdir('/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis')
+os.chdir(directory_path)
 
 
 
@@ -78,7 +81,7 @@ tripadvisor_link_list = pd.DataFrame(hotel_link_list)
 tripadvisor_link_list = tripadvisor_link_list.reset_index()
 
 # Save to CSV
-tripadvisor_link_list.to_csv("tripadvisor_link_list.csv",index=False)
+tripadvisor_link_list.to_csv("data/tripadvisor_link_list.csv",index=False)
 
 
 # Convert back to list for further use
@@ -121,7 +124,7 @@ hotel_links_more_df = pd.DataFrame(hotel_links_more)
 hotel_links_more_df = hotel_links_more_df.reset_index()
 
 # Save to CSV
-hotel_links_more_df.to_csv("tripadvisor_long_link_list.csv",index=False)
+hotel_links_more_df.to_csv("data/tripadvisor_long_link_list.csv",index=False)
 
 # Sort desending
 hotel_links_more_df = hotel_links_more_df.sort_values(['index'], ascending=[False])
