@@ -15,8 +15,8 @@ from scipy.stats import norm, skewnorm, lognorm, stats
 
 
 # add directories
-directory_path = '/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis'
-directory_functions_path = '/Users/danielbulat/Desktop/Uni/Master Thesis/python/master-thesis/code'
+directory_path = ''
+directory_functions_path = ''
 directory_figure_path = ''
 
 
