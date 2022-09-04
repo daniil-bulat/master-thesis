@@ -26,10 +26,17 @@ All data was scraped from [tripadvisor.com]. The ```tripadvisor_review_scraper.p
 ## 2. Exploratory Data Analysis - EDA
 The ```config.py``` file sets up the folder structure. When cloning the repository from GitHub, all the relevant folders are already in place. Nevertheless, the ```config.py``` defines the path architecture and makes sure it runs on each individual local machine.
 
-## 3. Random Forest
-#### Feature Selection
+## 3. Natural Languge Processing
 
+## 4. Pedictive Analysis
+
+#### Random Forest
+#### Feature Selection
 #### Grid Search
+
+## 5. Final Results
+
+
 
 
 
